@@ -374,7 +374,10 @@ escaper = EntitySubstitution()
 def cute_stype(x):
     cute = {
         'laptop': u"💻",
-        'duckiebot': u"🚗"
+        'duckiebot': u"🚗",
+        'laptop-container': u"💻📦",
+        'duckiebot-container': u"🚗📦",
+        'container': u"📦",
     }
     s = cute.get(x, x)
     return escaper.substitute_html(s)
@@ -402,5 +405,4 @@ if __name__ == '__main__':
     print('creating summary')
     html = create_summary(mongo_data)
     dtu.write_data_to_file(html, output)
-    
     
