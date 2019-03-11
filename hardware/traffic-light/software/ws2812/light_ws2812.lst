@@ -1,0 +1,913 @@
+   1               		.file	"light_ws2812.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   9               		.text
+  10               	.Ltext0:
+ 111               	ws2812_send_byte:
+ 112               		.stabd	46,0,0
+   1:ws2812/light_ws2812.c **** /*
+   2:ws2812/light_ws2812.c **** * light weight WS2812 lib V2.0b
+   3:ws2812/light_ws2812.c **** *
+   4:ws2812/light_ws2812.c **** * Controls WS2811/WS2812/WS2812B RGB-LEDs
+   5:ws2812/light_ws2812.c **** * Author: Tim (cpldcpu@gmail.com)
+   6:ws2812/light_ws2812.c **** *
+   7:ws2812/light_ws2812.c **** * Jan 18th, 2014  v2.0b Initial Version
+   8:ws2812/light_ws2812.c **** * Nov 29th, 2015  v2.3  Added SK6812RGBW support
+   9:ws2812/light_ws2812.c **** *
+  10:ws2812/light_ws2812.c **** * License: GNU GPL v2 (see License.txt)
+  11:ws2812/light_ws2812.c **** */
+  12:ws2812/light_ws2812.c **** 
+  13:ws2812/light_ws2812.c **** #include "light_ws2812.h"
+  14:ws2812/light_ws2812.c **** #include <avr/interrupt.h>
+  15:ws2812/light_ws2812.c **** #include <avr/io.h>
+  16:ws2812/light_ws2812.c **** #include <util/delay.h>
+  17:ws2812/light_ws2812.c ****  
+  18:ws2812/light_ws2812.c **** // Setleds for standard RGB 
+  19:ws2812/light_ws2812.c **** void inline ws2812_setleds(struct cRGB *ledarray, uint16_t leds)
+  20:ws2812/light_ws2812.c **** {
+  21:ws2812/light_ws2812.c ****    ws2812_setleds_pin(ledarray,leds, _BV(ws2812_pin));
+  22:ws2812/light_ws2812.c **** }
+  23:ws2812/light_ws2812.c **** 
+  24:ws2812/light_ws2812.c **** void inline ws2812_setleds_pin(struct cRGB *ledarray, uint16_t leds, uint8_t pinmask)
+  25:ws2812/light_ws2812.c **** {
+  26:ws2812/light_ws2812.c ****   ws2812_sendarray_mask((uint8_t*)ledarray,leds+leds+leds,pinmask);
+  27:ws2812/light_ws2812.c ****   _delay_us(50);
+  28:ws2812/light_ws2812.c **** }
+  29:ws2812/light_ws2812.c **** 
+  30:ws2812/light_ws2812.c **** // Setleds for SK6812RGBW
+  31:ws2812/light_ws2812.c **** void inline ws2812_setleds_rgbw(struct cRGBW *ledarray, uint16_t leds)
+  32:ws2812/light_ws2812.c **** {
+  33:ws2812/light_ws2812.c ****   ws2812_sendarray_mask((uint8_t*)ledarray,leds<<2,_BV(ws2812_pin));
+  34:ws2812/light_ws2812.c ****   _delay_us(80);
+  35:ws2812/light_ws2812.c **** }
+  36:ws2812/light_ws2812.c **** 
+  37:ws2812/light_ws2812.c **** static void inline ws2812_send_byte(uint8_t curbyte, uint8_t maskhi, uint8_t masklo);
+  38:ws2812/light_ws2812.c **** 
+  39:ws2812/light_ws2812.c **** void ws2812_setleds_constant(struct cRGB *ledval, uint16_t leds)
+  40:ws2812/light_ws2812.c **** {
+  41:ws2812/light_ws2812.c ****   uint8_t masklo,maskhi;
+  42:ws2812/light_ws2812.c ****   uint8_t sreg_prev;
+  43:ws2812/light_ws2812.c **** 
+  44:ws2812/light_ws2812.c ****   maskhi = _BV(ws2812_pin);
+  45:ws2812/light_ws2812.c ****   ws2812_DDRREG |= maskhi; // Enable output
+  46:ws2812/light_ws2812.c **** 
+  47:ws2812/light_ws2812.c ****   masklo	=~maskhi&ws2812_PORTREG;
+  48:ws2812/light_ws2812.c ****   maskhi |=        ws2812_PORTREG;
+  49:ws2812/light_ws2812.c **** 
+  50:ws2812/light_ws2812.c ****   sreg_prev=SREG;
+  51:ws2812/light_ws2812.c ****   cli();
+  52:ws2812/light_ws2812.c **** 
+  53:ws2812/light_ws2812.c ****   while (leds--) {
+  54:ws2812/light_ws2812.c ****     uint8_t i;
+  55:ws2812/light_ws2812.c ****     for (i = 0; i < 3; i++) {
+  56:ws2812/light_ws2812.c ****       ws2812_send_byte(((uint8_t *)ledval)[i], maskhi, masklo);
+  57:ws2812/light_ws2812.c ****     }
+  58:ws2812/light_ws2812.c ****   }
+  59:ws2812/light_ws2812.c ****   SREG=sreg_prev;
+  60:ws2812/light_ws2812.c ****   _delay_us(50);
+  61:ws2812/light_ws2812.c **** }
+  62:ws2812/light_ws2812.c **** 
+  63:ws2812/light_ws2812.c **** void ws2812_setleds_constant_rgbw(struct cRGBW *ledval, uint16_t leds)
+  64:ws2812/light_ws2812.c **** {
+  65:ws2812/light_ws2812.c ****   uint8_t masklo,maskhi;
+  66:ws2812/light_ws2812.c ****   uint8_t sreg_prev;
+  67:ws2812/light_ws2812.c **** 
+  68:ws2812/light_ws2812.c ****   maskhi = _BV(ws2812_pin);
+  69:ws2812/light_ws2812.c ****   ws2812_DDRREG |= maskhi; // Enable output
+  70:ws2812/light_ws2812.c **** 
+  71:ws2812/light_ws2812.c ****   masklo	=~maskhi&ws2812_PORTREG;
+  72:ws2812/light_ws2812.c ****   maskhi |=        ws2812_PORTREG;
+  73:ws2812/light_ws2812.c **** 
+  74:ws2812/light_ws2812.c ****   sreg_prev=SREG;
+  75:ws2812/light_ws2812.c ****   cli();
+  76:ws2812/light_ws2812.c **** 
+  77:ws2812/light_ws2812.c ****   while (leds--) {
+  78:ws2812/light_ws2812.c ****     uint8_t i;
+  79:ws2812/light_ws2812.c ****     for (i = 0; i < 4; i++) {
+  80:ws2812/light_ws2812.c ****       ws2812_send_byte(((uint8_t *)ledval)[i], maskhi, masklo);
+  81:ws2812/light_ws2812.c ****     }
+  82:ws2812/light_ws2812.c ****   }
+  83:ws2812/light_ws2812.c ****   SREG=sreg_prev;
+  84:ws2812/light_ws2812.c ****   _delay_us(80);
+  85:ws2812/light_ws2812.c **** }
+  86:ws2812/light_ws2812.c **** 
+  87:ws2812/light_ws2812.c **** void ws2812_sendarray(uint8_t *data,uint16_t datlen)
+  88:ws2812/light_ws2812.c **** {
+  89:ws2812/light_ws2812.c ****   ws2812_sendarray_mask(data,datlen,_BV(ws2812_pin));
+  90:ws2812/light_ws2812.c **** }
+  91:ws2812/light_ws2812.c **** 
+  92:ws2812/light_ws2812.c **** /*
+  93:ws2812/light_ws2812.c ****   This routine writes an array of bytes with RGB values to the Dataout pin
+  94:ws2812/light_ws2812.c ****   using the fast 800kHz clockless WS2811/2812 protocol.
+  95:ws2812/light_ws2812.c **** */
+  96:ws2812/light_ws2812.c **** 
+  97:ws2812/light_ws2812.c **** // Timing in ns
+  98:ws2812/light_ws2812.c **** #define w_zeropulse   350
+  99:ws2812/light_ws2812.c **** #define w_onepulse    900
+ 100:ws2812/light_ws2812.c **** #define w_totalperiod 1250
+ 101:ws2812/light_ws2812.c **** 
+ 102:ws2812/light_ws2812.c **** // Fixed cycles used by the inner loop
+ 103:ws2812/light_ws2812.c **** #define w_fixedlow    2
+ 104:ws2812/light_ws2812.c **** #define w_fixedhigh   4
+ 105:ws2812/light_ws2812.c **** #define w_fixedtotal  8   
+ 106:ws2812/light_ws2812.c **** 
+ 107:ws2812/light_ws2812.c **** // Insert NOPs to match the timing, if possible
+ 108:ws2812/light_ws2812.c **** #define w_zerocycles    (((F_CPU/1000)*w_zeropulse          )/1000000)
+ 109:ws2812/light_ws2812.c **** #define w_onecycles     (((F_CPU/1000)*w_onepulse    +500000)/1000000)
+ 110:ws2812/light_ws2812.c **** #define w_totalcycles   (((F_CPU/1000)*w_totalperiod +500000)/1000000)
+ 111:ws2812/light_ws2812.c **** 
+ 112:ws2812/light_ws2812.c **** // w1 - nops between rising edge and falling edge - low
+ 113:ws2812/light_ws2812.c **** #define w1 (w_zerocycles-w_fixedlow)
+ 114:ws2812/light_ws2812.c **** // w2   nops between fe low and fe high
+ 115:ws2812/light_ws2812.c **** #define w2 (w_onecycles-w_fixedhigh-w1)
+ 116:ws2812/light_ws2812.c **** // w3   nops to complete loop
+ 117:ws2812/light_ws2812.c **** #define w3 (w_totalcycles-w_fixedtotal-w1-w2)
+ 118:ws2812/light_ws2812.c **** 
+ 119:ws2812/light_ws2812.c **** #if w1>0
+ 120:ws2812/light_ws2812.c ****   #define w1_nops w1
+ 121:ws2812/light_ws2812.c **** #else
+ 122:ws2812/light_ws2812.c ****   #define w1_nops  0
+ 123:ws2812/light_ws2812.c **** #endif
+ 124:ws2812/light_ws2812.c **** 
+ 125:ws2812/light_ws2812.c **** // The only critical timing parameter is the minimum pulse length of the "0"
+ 126:ws2812/light_ws2812.c **** // Warn or throw error if this timing can not be met with current F_CPU settings.
+ 127:ws2812/light_ws2812.c **** #define w_lowtime ((w1_nops+w_fixedlow)*1000000)/(F_CPU/1000)
+ 128:ws2812/light_ws2812.c **** #if w_lowtime>550
+ 129:ws2812/light_ws2812.c ****    #error "Light_ws2812: Sorry, the clock speed is too low. Did you set F_CPU correctly?"
+ 130:ws2812/light_ws2812.c **** #elif w_lowtime>450
+ 131:ws2812/light_ws2812.c ****    #warning "Light_ws2812: The timing is critical and may only work on WS2812B, not on WS2812(S)."
+ 132:ws2812/light_ws2812.c ****    #warning "Please consider a higher clockspeed, if possible"
+ 133:ws2812/light_ws2812.c **** #endif   
+ 134:ws2812/light_ws2812.c **** 
+ 135:ws2812/light_ws2812.c **** #if w2>0
+ 136:ws2812/light_ws2812.c **** #define w2_nops w2
+ 137:ws2812/light_ws2812.c **** #else
+ 138:ws2812/light_ws2812.c **** #define w2_nops  0
+ 139:ws2812/light_ws2812.c **** #endif
+ 140:ws2812/light_ws2812.c **** 
+ 141:ws2812/light_ws2812.c **** #if w3>0
+ 142:ws2812/light_ws2812.c **** #define w3_nops w3
+ 143:ws2812/light_ws2812.c **** #else
+ 144:ws2812/light_ws2812.c **** #define w3_nops  0
+ 145:ws2812/light_ws2812.c **** #endif
+ 146:ws2812/light_ws2812.c **** 
+ 147:ws2812/light_ws2812.c **** #define w_nop1  "nop      \n\t"
+ 148:ws2812/light_ws2812.c **** #define w_nop2  "rjmp .+0 \n\t"
+ 149:ws2812/light_ws2812.c **** #define w_nop4  w_nop2 w_nop2
+ 150:ws2812/light_ws2812.c **** #define w_nop8  w_nop4 w_nop4
+ 151:ws2812/light_ws2812.c **** #define w_nop16 w_nop8 w_nop8
+ 152:ws2812/light_ws2812.c **** 
+ 153:ws2812/light_ws2812.c **** static void inline ws2812_send_byte(uint8_t curbyte, uint8_t maskhi, uint8_t masklo)
+ 154:ws2812/light_ws2812.c **** {
+ 114               	.LM0:
+ 115               	.LFBB1:
+ 116               	/* prologue: function */
+ 117               	/* frame size = 0 */
+ 118               	/* stack size = 0 */
+ 119               	.L__stack_usage = 0
+ 155:ws2812/light_ws2812.c ****     uint8_t ctr;
+ 156:ws2812/light_ws2812.c ****     asm volatile(
+ 121               	.LM1:
+ 122 0000 982F      		mov r25,r24
+ 123               	/* #APP */
+ 124               	 ;  156 "ws2812/light_ws2812.c" 1
+ 125 0002 88E0      		       ldi   r24,8  
+ 126               		loop7:            
+ 127 0004 6BBB      		       out   27,r22 
+ 128 0006 97FF      		       sbrs  r25,7  
+ 129 0008 4BBB      		       out   27,r20 
+ 130 000a 990F      		       lsl   r25    
+ 131 000c 0000      		nop      
+ 132 000e 00C0      		rjmp .+0 
+ 133 0010 4BBB      		       out   27,r20 
+ 134 0012 8A95      		       dec   r24    
+ 135 0014 01F4      		       brne  loop7
+ 136               		
+ 137               	 ;  0 "" 2
+ 138               	/* #NOAPP */
+ 139 0016 0895      		ret
+ 141               	.Lscope1:
+ 143               		.stabd	78,0,0
+ 146               	.global	ws2812_setleds_constant
+ 148               	ws2812_setleds_constant:
+ 149               		.stabd	46,0,0
+  40:ws2812/light_ws2812.c ****   uint8_t masklo,maskhi;
+ 151               	.LM2:
+ 152               	.LFBB2:
+ 153 0018 8F92      		push r8
+ 154 001a 9F92      		push r9
+ 155 001c BF92      		push r11
+ 156 001e CF92      		push r12
+ 157 0020 DF92      		push r13
+ 158 0022 EF92      		push r14
+ 159 0024 FF92      		push r15
+ 160 0026 0F93      		push r16
+ 161 0028 1F93      		push r17
+ 162 002a CF93      		push r28
+ 163 002c DF93      		push r29
+ 164               	/* prologue: function */
+ 165               	/* frame size = 0 */
+ 166               	/* stack size = 11 */
+ 167               	.L__stack_usage = 11
+ 168 002e 6C01      		movw r12,r24
+  45:ws2812/light_ws2812.c **** 
+ 170               	.LM3:
+ 171 0030 D19A      		sbi 0x1a,1
+  47:ws2812/light_ws2812.c ****   maskhi |=        ws2812_PORTREG;
+ 173               	.LM4:
+ 174 0032 9BB3      		in r25,0x1b
+ 175 0034 9D7F      		andi r25,lo8(-3)
+ 176 0036 F92E      		mov r15,r25
+  48:ws2812/light_ws2812.c **** 
+ 178               	.LM5:
+ 179 0038 9BB3      		in r25,0x1b
+ 180 003a 9260      		ori r25,lo8(2)
+ 181 003c E92E      		mov r14,r25
+  50:ws2812/light_ws2812.c ****   cli();
+ 183               	.LM6:
+ 184 003e BFB6      		in r11,__SREG__
+  51:ws2812/light_ws2812.c **** 
+ 186               	.LM7:
+ 187               	/* #APP */
+ 188               	 ;  51 "ws2812/light_ws2812.c" 1
+ 189 0040 F894      		cli
+ 190               	 ;  0 "" 2
+  53:ws2812/light_ws2812.c ****     uint8_t i;
+ 192               	.LM8:
+ 193               	/* #NOAPP */
+ 194 0042 EB01      		movw r28,r22
+ 195 0044 4601      		movw r8,r12
+ 196 0046 83E0      		ldi r24,3
+ 197 0048 880E      		add r8,r24
+ 198 004a 911C      		adc r9,__zero_reg__
+ 199               	.L3:
+ 200 004c 2097      		sbiw r28,0
+ 201 004e 01F0      		breq .L5
+ 202 0050 8601      		movw r16,r12
+ 203               	.L4:
+ 204               	.LBB12:
+  56:ws2812/light_ws2812.c ****     }
+ 206               	.LM9:
+ 207 0052 4F2D      		mov r20,r15
+ 208 0054 6E2D      		mov r22,r14
+ 209 0056 F801      		movw r30,r16
+ 210 0058 8191      		ld r24,Z+
+ 211 005a 8F01      		movw r16,r30
+ 212 005c 00D0      		rcall ws2812_send_byte
+  55:ws2812/light_ws2812.c ****       ws2812_send_byte(((uint8_t *)ledval)[i], maskhi, masklo);
+ 214               	.LM10:
+ 215 005e 0815      		cp r16,r8
+ 216 0060 1905      		cpc r17,r9
+ 217 0062 01F4      		brne .L4
+ 218 0064 2197      		sbiw r28,1
+ 219 0066 00C0      		rjmp .L3
+ 220               	.L5:
+ 221               	.LBE12:
+  59:ws2812/light_ws2812.c ****   _delay_us(50);
+ 223               	.LM11:
+ 224 0068 BFBE      		out __SREG__,r11
+ 225               	.LBB13:
+ 226               	.LBB14:
+ 228               	.Ltext1:
+   1:/usr/lib/avr/include/util/delay.h **** /* Copyright (c) 2002, Marek Michalkiewicz
+   2:/usr/lib/avr/include/util/delay.h ****    Copyright (c) 2004,2005,2007 Joerg Wunsch
+   3:/usr/lib/avr/include/util/delay.h ****    Copyright (c) 2007  Florin-Viorel Petrov
+   4:/usr/lib/avr/include/util/delay.h ****    All rights reserved.
+   5:/usr/lib/avr/include/util/delay.h **** 
+   6:/usr/lib/avr/include/util/delay.h ****    Redistribution and use in source and binary forms, with or without
+   7:/usr/lib/avr/include/util/delay.h ****    modification, are permitted provided that the following conditions are met:
+   8:/usr/lib/avr/include/util/delay.h **** 
+   9:/usr/lib/avr/include/util/delay.h ****    * Redistributions of source code must retain the above copyright
+  10:/usr/lib/avr/include/util/delay.h ****      notice, this list of conditions and the following disclaimer.
+  11:/usr/lib/avr/include/util/delay.h **** 
+  12:/usr/lib/avr/include/util/delay.h ****    * Redistributions in binary form must reproduce the above copyright
+  13:/usr/lib/avr/include/util/delay.h ****      notice, this list of conditions and the following disclaimer in
+  14:/usr/lib/avr/include/util/delay.h ****      the documentation and/or other materials provided with the
+  15:/usr/lib/avr/include/util/delay.h ****      distribution.
+  16:/usr/lib/avr/include/util/delay.h **** 
+  17:/usr/lib/avr/include/util/delay.h ****    * Neither the name of the copyright holders nor the names of
+  18:/usr/lib/avr/include/util/delay.h ****      contributors may be used to endorse or promote products derived
+  19:/usr/lib/avr/include/util/delay.h ****      from this software without specific prior written permission.
+  20:/usr/lib/avr/include/util/delay.h **** 
+  21:/usr/lib/avr/include/util/delay.h ****   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  22:/usr/lib/avr/include/util/delay.h ****   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  23:/usr/lib/avr/include/util/delay.h ****   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  24:/usr/lib/avr/include/util/delay.h ****   ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  25:/usr/lib/avr/include/util/delay.h ****   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  26:/usr/lib/avr/include/util/delay.h ****   CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  27:/usr/lib/avr/include/util/delay.h ****   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  28:/usr/lib/avr/include/util/delay.h ****   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  29:/usr/lib/avr/include/util/delay.h ****   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  30:/usr/lib/avr/include/util/delay.h ****   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  31:/usr/lib/avr/include/util/delay.h ****   POSSIBILITY OF SUCH DAMAGE. */
+  32:/usr/lib/avr/include/util/delay.h **** 
+  33:/usr/lib/avr/include/util/delay.h **** /* $Id$ */
+  34:/usr/lib/avr/include/util/delay.h **** 
+  35:/usr/lib/avr/include/util/delay.h **** #ifndef _UTIL_DELAY_H_
+  36:/usr/lib/avr/include/util/delay.h **** #define _UTIL_DELAY_H_ 1
+  37:/usr/lib/avr/include/util/delay.h **** 
+  38:/usr/lib/avr/include/util/delay.h **** #ifndef __HAS_DELAY_CYCLES
+  39:/usr/lib/avr/include/util/delay.h **** #define __HAS_DELAY_CYCLES 1
+  40:/usr/lib/avr/include/util/delay.h **** #endif
+  41:/usr/lib/avr/include/util/delay.h **** 
+  42:/usr/lib/avr/include/util/delay.h **** #include <inttypes.h>
+  43:/usr/lib/avr/include/util/delay.h **** #include <util/delay_basic.h>
+  44:/usr/lib/avr/include/util/delay.h **** #include <math.h>
+  45:/usr/lib/avr/include/util/delay.h **** 
+  46:/usr/lib/avr/include/util/delay.h **** /** \file */
+  47:/usr/lib/avr/include/util/delay.h **** /** \defgroup util_delay <util/delay.h>: Convenience functions for busy-wait delay loops
+  48:/usr/lib/avr/include/util/delay.h ****     \code
+  49:/usr/lib/avr/include/util/delay.h ****     #define F_CPU 1000000UL  // 1 MHz
+  50:/usr/lib/avr/include/util/delay.h ****     //#define F_CPU 14.7456E6
+  51:/usr/lib/avr/include/util/delay.h ****     #include <util/delay.h>
+  52:/usr/lib/avr/include/util/delay.h ****     \endcode
+  53:/usr/lib/avr/include/util/delay.h **** 
+  54:/usr/lib/avr/include/util/delay.h ****     \note As an alternative method, it is possible to pass the
+  55:/usr/lib/avr/include/util/delay.h ****     F_CPU macro down to the compiler from the Makefile.
+  56:/usr/lib/avr/include/util/delay.h ****     Obviously, in that case, no \c \#define statement should be
+  57:/usr/lib/avr/include/util/delay.h ****     used.
+  58:/usr/lib/avr/include/util/delay.h **** 
+  59:/usr/lib/avr/include/util/delay.h ****     The functions in this header file are wrappers around the basic
+  60:/usr/lib/avr/include/util/delay.h ****     busy-wait functions from <util/delay_basic.h>.  They are meant as
+  61:/usr/lib/avr/include/util/delay.h ****     convenience functions where actual time values can be specified
+  62:/usr/lib/avr/include/util/delay.h ****     rather than a number of cycles to wait for.  The idea behind is
+  63:/usr/lib/avr/include/util/delay.h ****     that compile-time constant expressions will be eliminated by
+  64:/usr/lib/avr/include/util/delay.h ****     compiler optimization so floating-point expressions can be used
+  65:/usr/lib/avr/include/util/delay.h ****     to calculate the number of delay cycles needed based on the CPU
+  66:/usr/lib/avr/include/util/delay.h ****     frequency passed by the macro F_CPU.
+  67:/usr/lib/avr/include/util/delay.h **** 
+  68:/usr/lib/avr/include/util/delay.h ****     \note In order for these functions to work as intended, compiler
+  69:/usr/lib/avr/include/util/delay.h ****     optimizations <em>must</em> be enabled, and the delay time
+  70:/usr/lib/avr/include/util/delay.h ****     <em>must</em> be an expression that is a known constant at
+  71:/usr/lib/avr/include/util/delay.h ****     compile-time.  If these requirements are not met, the resulting
+  72:/usr/lib/avr/include/util/delay.h ****     delay will be much longer (and basically unpredictable), and
+  73:/usr/lib/avr/include/util/delay.h ****     applications that otherwise do not use floating-point calculations
+  74:/usr/lib/avr/include/util/delay.h ****     will experience severe code bloat by the floating-point library
+  75:/usr/lib/avr/include/util/delay.h ****     routines linked into the application.
+  76:/usr/lib/avr/include/util/delay.h **** 
+  77:/usr/lib/avr/include/util/delay.h ****     The functions available allow the specification of microsecond, and
+  78:/usr/lib/avr/include/util/delay.h ****     millisecond delays directly, using the application-supplied macro
+  79:/usr/lib/avr/include/util/delay.h ****     F_CPU as the CPU clock frequency (in Hertz).
+  80:/usr/lib/avr/include/util/delay.h **** 
+  81:/usr/lib/avr/include/util/delay.h **** */
+  82:/usr/lib/avr/include/util/delay.h **** 
+  83:/usr/lib/avr/include/util/delay.h **** #if !defined(__DOXYGEN__)
+  84:/usr/lib/avr/include/util/delay.h **** static inline void _delay_us(double __us) __attribute__((always_inline));
+  85:/usr/lib/avr/include/util/delay.h **** static inline void _delay_ms(double __ms) __attribute__((always_inline));
+  86:/usr/lib/avr/include/util/delay.h **** #endif
+  87:/usr/lib/avr/include/util/delay.h **** 
+  88:/usr/lib/avr/include/util/delay.h **** #ifndef F_CPU
+  89:/usr/lib/avr/include/util/delay.h **** /* prevent compiler error by supplying a default */
+  90:/usr/lib/avr/include/util/delay.h **** # warning "F_CPU not defined for <util/delay.h>"
+  91:/usr/lib/avr/include/util/delay.h **** # define F_CPU 1000000UL
+  92:/usr/lib/avr/include/util/delay.h **** #endif
+  93:/usr/lib/avr/include/util/delay.h **** 
+  94:/usr/lib/avr/include/util/delay.h **** #ifndef __OPTIMIZE__
+  95:/usr/lib/avr/include/util/delay.h **** # warning "Compiler optimizations disabled; functions from <util/delay.h> won't work as designed"
+  96:/usr/lib/avr/include/util/delay.h **** #endif
+  97:/usr/lib/avr/include/util/delay.h **** 
+  98:/usr/lib/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+  99:/usr/lib/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 100:/usr/lib/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 101:/usr/lib/avr/include/util/delay.h **** #  include <math.h>
+ 102:/usr/lib/avr/include/util/delay.h **** #endif
+ 103:/usr/lib/avr/include/util/delay.h **** 
+ 104:/usr/lib/avr/include/util/delay.h **** /**
+ 105:/usr/lib/avr/include/util/delay.h ****    \ingroup util_delay
+ 106:/usr/lib/avr/include/util/delay.h **** 
+ 107:/usr/lib/avr/include/util/delay.h ****    Perform a delay of \c __ms milliseconds, using _delay_loop_2().
+ 108:/usr/lib/avr/include/util/delay.h **** 
+ 109:/usr/lib/avr/include/util/delay.h ****    The macro F_CPU is supposed to be defined to a
+ 110:/usr/lib/avr/include/util/delay.h ****    constant defining the CPU clock frequency (in Hertz).
+ 111:/usr/lib/avr/include/util/delay.h **** 
+ 112:/usr/lib/avr/include/util/delay.h ****    The maximal possible delay is 262.14 ms / F_CPU in MHz.
+ 113:/usr/lib/avr/include/util/delay.h **** 
+ 114:/usr/lib/avr/include/util/delay.h ****    When the user request delay which exceed the maximum possible one,
+ 115:/usr/lib/avr/include/util/delay.h ****    _delay_ms() provides a decreased resolution functionality. In this
+ 116:/usr/lib/avr/include/util/delay.h ****    mode _delay_ms() will work with a resolution of 1/10 ms, providing
+ 117:/usr/lib/avr/include/util/delay.h ****    delays up to 6.5535 seconds (independent from CPU frequency).  The
+ 118:/usr/lib/avr/include/util/delay.h ****    user will not be informed about decreased resolution.
+ 119:/usr/lib/avr/include/util/delay.h **** 
+ 120:/usr/lib/avr/include/util/delay.h ****    If the avr-gcc toolchain has __builtin_avr_delay_cycles(unsigned long)
+ 121:/usr/lib/avr/include/util/delay.h ****    support, maximal possible delay is 4294967.295 ms/ F_CPU in MHz. For
+ 122:/usr/lib/avr/include/util/delay.h ****    values greater than the maximal possible delay, overflows results in
+ 123:/usr/lib/avr/include/util/delay.h ****    no delay i.e., 0ms.
+ 124:/usr/lib/avr/include/util/delay.h **** 
+ 125:/usr/lib/avr/include/util/delay.h ****    Conversion of __us into clock cycles may not always result in integer.
+ 126:/usr/lib/avr/include/util/delay.h ****    By default, the clock cycles rounded up to next integer. This ensures that
+ 127:/usr/lib/avr/include/util/delay.h ****    the user gets atleast __us microseconds of delay.
+ 128:/usr/lib/avr/include/util/delay.h **** 
+ 129:/usr/lib/avr/include/util/delay.h ****    Alternatively, user can define __DELAY_ROUND_DOWN__ and __DELAY_ROUND_CLOSEST__
+ 130:/usr/lib/avr/include/util/delay.h ****    to round down and round to closest integer.
+ 131:/usr/lib/avr/include/util/delay.h **** 
+ 132:/usr/lib/avr/include/util/delay.h ****    Note: The new implementation of _delay_ms(double __ms) with 
+ 133:/usr/lib/avr/include/util/delay.h ****     __builtin_avr_delay_cycles(unsigned long) support is not backward compatible. 
+ 134:/usr/lib/avr/include/util/delay.h ****    User can define __DELAY_BACKWARD_COMPATIBLE__ to get a backward compatible delay.
+ 135:/usr/lib/avr/include/util/delay.h ****    Also, the backward compatible
+ 136:/usr/lib/avr/include/util/delay.h ****    algorithm will be chosen if the code is compiled in a <em>freestanding
+ 137:/usr/lib/avr/include/util/delay.h ****    environment</em> (GCC option \c -ffreestanding), as the math functions
+ 138:/usr/lib/avr/include/util/delay.h ****    required for rounding are not available to the compiler then.
+ 139:/usr/lib/avr/include/util/delay.h **** 
+ 140:/usr/lib/avr/include/util/delay.h ****  */
+ 141:/usr/lib/avr/include/util/delay.h **** void
+ 142:/usr/lib/avr/include/util/delay.h **** _delay_ms(double __ms)
+ 143:/usr/lib/avr/include/util/delay.h **** {
+ 144:/usr/lib/avr/include/util/delay.h **** 	double __tmp ; 
+ 145:/usr/lib/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+ 146:/usr/lib/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 147:/usr/lib/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 148:/usr/lib/avr/include/util/delay.h **** 	uint32_t __ticks_dc;
+ 149:/usr/lib/avr/include/util/delay.h **** 	extern void __builtin_avr_delay_cycles(unsigned long);
+ 150:/usr/lib/avr/include/util/delay.h **** 	__tmp = ((F_CPU) / 1e3) * __ms;
+ 151:/usr/lib/avr/include/util/delay.h **** 
+ 152:/usr/lib/avr/include/util/delay.h **** 	#if defined(__DELAY_ROUND_DOWN__)
+ 153:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)fabs(__tmp);
+ 154:/usr/lib/avr/include/util/delay.h **** 
+ 155:/usr/lib/avr/include/util/delay.h **** 	#elif defined(__DELAY_ROUND_CLOSEST__)
+ 156:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(fabs(__tmp)+0.5);
+ 157:/usr/lib/avr/include/util/delay.h **** 
+ 158:/usr/lib/avr/include/util/delay.h **** 	#else
+ 159:/usr/lib/avr/include/util/delay.h **** 		//round up by default
+ 160:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
+ 161:/usr/lib/avr/include/util/delay.h **** 	#endif
+ 162:/usr/lib/avr/include/util/delay.h **** 
+ 163:/usr/lib/avr/include/util/delay.h **** 	__builtin_avr_delay_cycles(__ticks_dc);
+ 164:/usr/lib/avr/include/util/delay.h **** 
+ 165:/usr/lib/avr/include/util/delay.h **** #else
+ 166:/usr/lib/avr/include/util/delay.h **** 	uint16_t __ticks;
+ 167:/usr/lib/avr/include/util/delay.h **** 	__tmp = ((F_CPU) / 4e3) * __ms;
+ 168:/usr/lib/avr/include/util/delay.h **** 	if (__tmp < 1.0)
+ 169:/usr/lib/avr/include/util/delay.h **** 		__ticks = 1;
+ 170:/usr/lib/avr/include/util/delay.h **** 	else if (__tmp > 65535)
+ 171:/usr/lib/avr/include/util/delay.h **** 	{
+ 172:/usr/lib/avr/include/util/delay.h **** 		//	__ticks = requested delay in 1/10 ms
+ 173:/usr/lib/avr/include/util/delay.h **** 		__ticks = (uint16_t) (__ms * 10.0);
+ 174:/usr/lib/avr/include/util/delay.h **** 		while(__ticks)
+ 175:/usr/lib/avr/include/util/delay.h **** 		{
+ 176:/usr/lib/avr/include/util/delay.h **** 			// wait 1/10 ms
+ 177:/usr/lib/avr/include/util/delay.h **** 			_delay_loop_2(((F_CPU) / 4e3) / 10);
+ 178:/usr/lib/avr/include/util/delay.h **** 			__ticks --;
+ 179:/usr/lib/avr/include/util/delay.h **** 		}
+ 180:/usr/lib/avr/include/util/delay.h **** 		return;
+ 181:/usr/lib/avr/include/util/delay.h **** 	}
+ 182:/usr/lib/avr/include/util/delay.h **** 	else
+ 183:/usr/lib/avr/include/util/delay.h **** 		__ticks = (uint16_t)__tmp;
+ 184:/usr/lib/avr/include/util/delay.h **** 	_delay_loop_2(__ticks);
+ 185:/usr/lib/avr/include/util/delay.h **** #endif
+ 186:/usr/lib/avr/include/util/delay.h **** }
+ 187:/usr/lib/avr/include/util/delay.h **** 
+ 188:/usr/lib/avr/include/util/delay.h **** /**
+ 189:/usr/lib/avr/include/util/delay.h ****    \ingroup util_delay
+ 190:/usr/lib/avr/include/util/delay.h **** 
+ 191:/usr/lib/avr/include/util/delay.h ****    Perform a delay of \c __us microseconds, using _delay_loop_1().
+ 192:/usr/lib/avr/include/util/delay.h **** 
+ 193:/usr/lib/avr/include/util/delay.h ****    The macro F_CPU is supposed to be defined to a
+ 194:/usr/lib/avr/include/util/delay.h ****    constant defining the CPU clock frequency (in Hertz).
+ 195:/usr/lib/avr/include/util/delay.h **** 
+ 196:/usr/lib/avr/include/util/delay.h ****    The maximal possible delay is 768 us / F_CPU in MHz.
+ 197:/usr/lib/avr/include/util/delay.h **** 
+ 198:/usr/lib/avr/include/util/delay.h ****    If the user requests a delay greater than the maximal possible one,
+ 199:/usr/lib/avr/include/util/delay.h ****    _delay_us() will automatically call _delay_ms() instead.  The user
+ 200:/usr/lib/avr/include/util/delay.h ****    will not be informed about this case.
+ 201:/usr/lib/avr/include/util/delay.h **** 
+ 202:/usr/lib/avr/include/util/delay.h ****    If the avr-gcc toolchain has __builtin_avr_delay_cycles(unsigned long)
+ 203:/usr/lib/avr/include/util/delay.h ****    support, maximal possible delay is 4294967.295 us/ F_CPU in MHz. For
+ 204:/usr/lib/avr/include/util/delay.h ****    values greater than the maximal possible delay, overflow results in
+ 205:/usr/lib/avr/include/util/delay.h ****    no delay i.e., 0us.
+ 206:/usr/lib/avr/include/util/delay.h ****   
+ 207:/usr/lib/avr/include/util/delay.h ****    Conversion of __us into clock cycles may not always result in integer.
+ 208:/usr/lib/avr/include/util/delay.h ****    By default, the clock cycles rounded up to next integer. This ensures that
+ 209:/usr/lib/avr/include/util/delay.h ****    the user gets atleast __us microseconds of delay.
+ 210:/usr/lib/avr/include/util/delay.h **** 
+ 211:/usr/lib/avr/include/util/delay.h ****    Alternatively, user can define __DELAY_ROUND_DOWN__ and __DELAY_ROUND_CLOSEST__
+ 212:/usr/lib/avr/include/util/delay.h ****    to round down and round to closest integer.
+ 213:/usr/lib/avr/include/util/delay.h ****  
+ 214:/usr/lib/avr/include/util/delay.h ****    Note: The new implementation of _delay_us(double __us) with 
+ 215:/usr/lib/avr/include/util/delay.h ****     __builtin_avr_delay_cycles(unsigned long) support is not backward compatible.
+ 216:/usr/lib/avr/include/util/delay.h ****    User can define __DELAY_BACKWARD_COMPATIBLE__ to get a backward compatible delay.
+ 217:/usr/lib/avr/include/util/delay.h ****    Also, the backward compatible
+ 218:/usr/lib/avr/include/util/delay.h ****    algorithm will be chosen if the code is compiled in a <em>freestanding
+ 219:/usr/lib/avr/include/util/delay.h ****    environment</em> (GCC option \c -ffreestanding), as the math functions
+ 220:/usr/lib/avr/include/util/delay.h ****    required for rounding are not available to the compiler then.
+ 221:/usr/lib/avr/include/util/delay.h **** 
+ 222:/usr/lib/avr/include/util/delay.h ****  */
+ 223:/usr/lib/avr/include/util/delay.h **** void
+ 224:/usr/lib/avr/include/util/delay.h **** _delay_us(double __us)
+ 225:/usr/lib/avr/include/util/delay.h **** {
+ 226:/usr/lib/avr/include/util/delay.h **** 	double __tmp ; 
+ 227:/usr/lib/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+ 228:/usr/lib/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 229:/usr/lib/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 230:/usr/lib/avr/include/util/delay.h **** 	uint32_t __ticks_dc;
+ 231:/usr/lib/avr/include/util/delay.h **** 	extern void __builtin_avr_delay_cycles(unsigned long);
+ 232:/usr/lib/avr/include/util/delay.h **** 	__tmp = ((F_CPU) / 1e6) * __us;
+ 233:/usr/lib/avr/include/util/delay.h **** 
+ 234:/usr/lib/avr/include/util/delay.h **** 	#if defined(__DELAY_ROUND_DOWN__)
+ 235:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)fabs(__tmp);
+ 236:/usr/lib/avr/include/util/delay.h **** 
+ 237:/usr/lib/avr/include/util/delay.h **** 	#elif defined(__DELAY_ROUND_CLOSEST__)
+ 238:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(fabs(__tmp)+0.5);
+ 239:/usr/lib/avr/include/util/delay.h **** 
+ 240:/usr/lib/avr/include/util/delay.h **** 	#else
+ 241:/usr/lib/avr/include/util/delay.h **** 		//round up by default
+ 242:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
+ 243:/usr/lib/avr/include/util/delay.h **** 	#endif
+ 244:/usr/lib/avr/include/util/delay.h **** 
+ 245:/usr/lib/avr/include/util/delay.h **** 	__builtin_avr_delay_cycles(__ticks_dc);
+ 230               	.LM12:
+ 231 006a F5E8      		ldi r31,lo8(-123)
+ 232 006c FA95      	1:	dec r31
+ 233 006e 01F4      		brne 1b
+ 234 0070 0000      		nop
+ 235               	/* epilogue start */
+ 236               	.LBE14:
+ 237               	.LBE13:
+ 239               	.Ltext2:
+  61:ws2812/light_ws2812.c **** 
+ 241               	.LM13:
+ 242 0072 DF91      		pop r29
+ 243 0074 CF91      		pop r28
+ 244 0076 1F91      		pop r17
+ 245 0078 0F91      		pop r16
+ 246 007a FF90      		pop r15
+ 247 007c EF90      		pop r14
+ 248 007e DF90      		pop r13
+ 249 0080 CF90      		pop r12
+ 250 0082 BF90      		pop r11
+ 251 0084 9F90      		pop r9
+ 252 0086 8F90      		pop r8
+ 253 0088 0895      		ret
+ 260               	.Lscope2:
+ 262               		.stabd	78,0,0
+ 265               	.global	ws2812_setleds_constant_rgbw
+ 267               	ws2812_setleds_constant_rgbw:
+ 268               		.stabd	46,0,0
+  64:ws2812/light_ws2812.c ****   uint8_t masklo,maskhi;
+ 270               	.LM14:
+ 271               	.LFBB3:
+ 272 008a 8F92      		push r8
+ 273 008c 9F92      		push r9
+ 274 008e BF92      		push r11
+ 275 0090 CF92      		push r12
+ 276 0092 DF92      		push r13
+ 277 0094 EF92      		push r14
+ 278 0096 FF92      		push r15
+ 279 0098 0F93      		push r16
+ 280 009a 1F93      		push r17
+ 281 009c CF93      		push r28
+ 282 009e DF93      		push r29
+ 283               	/* prologue: function */
+ 284               	/* frame size = 0 */
+ 285               	/* stack size = 11 */
+ 286               	.L__stack_usage = 11
+ 287 00a0 6C01      		movw r12,r24
+  69:ws2812/light_ws2812.c **** 
+ 289               	.LM15:
+ 290 00a2 D19A      		sbi 0x1a,1
+  71:ws2812/light_ws2812.c ****   maskhi |=        ws2812_PORTREG;
+ 292               	.LM16:
+ 293 00a4 9BB3      		in r25,0x1b
+ 294 00a6 9D7F      		andi r25,lo8(-3)
+ 295 00a8 F92E      		mov r15,r25
+  72:ws2812/light_ws2812.c **** 
+ 297               	.LM17:
+ 298 00aa 9BB3      		in r25,0x1b
+ 299 00ac 9260      		ori r25,lo8(2)
+ 300 00ae E92E      		mov r14,r25
+  74:ws2812/light_ws2812.c ****   cli();
+ 302               	.LM18:
+ 303 00b0 BFB6      		in r11,__SREG__
+  75:ws2812/light_ws2812.c **** 
+ 305               	.LM19:
+ 306               	/* #APP */
+ 307               	 ;  75 "ws2812/light_ws2812.c" 1
+ 308 00b2 F894      		cli
+ 309               	 ;  0 "" 2
+  77:ws2812/light_ws2812.c ****     uint8_t i;
+ 311               	.LM20:
+ 312               	/* #NOAPP */
+ 313 00b4 EB01      		movw r28,r22
+ 314 00b6 4601      		movw r8,r12
+ 315 00b8 84E0      		ldi r24,4
+ 316 00ba 880E      		add r8,r24
+ 317 00bc 911C      		adc r9,__zero_reg__
+ 318               	.L9:
+ 319 00be 2097      		sbiw r28,0
+ 320 00c0 01F0      		breq .L11
+ 321 00c2 8601      		movw r16,r12
+ 322               	.L10:
+ 323               	.LBB15:
+  80:ws2812/light_ws2812.c ****     }
+ 325               	.LM21:
+ 326 00c4 4F2D      		mov r20,r15
+ 327 00c6 6E2D      		mov r22,r14
+ 328 00c8 F801      		movw r30,r16
+ 329 00ca 8191      		ld r24,Z+
+ 330 00cc 8F01      		movw r16,r30
+ 331 00ce 00D0      		rcall ws2812_send_byte
+  79:ws2812/light_ws2812.c ****       ws2812_send_byte(((uint8_t *)ledval)[i], maskhi, masklo);
+ 333               	.LM22:
+ 334 00d0 0815      		cp r16,r8
+ 335 00d2 1905      		cpc r17,r9
+ 336 00d4 01F4      		brne .L10
+ 337 00d6 2197      		sbiw r28,1
+ 338 00d8 00C0      		rjmp .L9
+ 339               	.L11:
+ 340               	.LBE15:
+  83:ws2812/light_ws2812.c ****   _delay_us(80);
+ 342               	.LM23:
+ 343 00da BFBE      		out __SREG__,r11
+ 344               	.LBB16:
+ 345               	.LBB17:
+ 347               	.Ltext3:
+ 349               	.LM24:
+ 350 00dc F5ED      		ldi r31,lo8(-43)
+ 351 00de FA95      	1:	dec r31
+ 352 00e0 01F4      		brne 1b
+ 353 00e2 0000      		nop
+ 354               	/* epilogue start */
+ 355               	.LBE17:
+ 356               	.LBE16:
+ 358               	.Ltext4:
+  85:ws2812/light_ws2812.c **** 
+ 360               	.LM25:
+ 361 00e4 DF91      		pop r29
+ 362 00e6 CF91      		pop r28
+ 363 00e8 1F91      		pop r17
+ 364 00ea 0F91      		pop r16
+ 365 00ec FF90      		pop r15
+ 366 00ee EF90      		pop r14
+ 367 00f0 DF90      		pop r13
+ 368 00f2 CF90      		pop r12
+ 369 00f4 BF90      		pop r11
+ 370 00f6 9F90      		pop r9
+ 371 00f8 8F90      		pop r8
+ 372 00fa 0895      		ret
+ 379               	.Lscope3:
+ 381               		.stabd	78,0,0
+ 385               	.global	ws2812_sendarray_mask
+ 387               	ws2812_sendarray_mask:
+ 388               		.stabd	46,0,0
+ 157:ws2812/light_ws2812.c ****     "       ldi   %0,8  \n\t"
+ 158:ws2812/light_ws2812.c ****     "loop%=:            \n\t"
+ 159:ws2812/light_ws2812.c ****     "       out   %2,%3 \n\t"    //  '1' [01] '0' [01] - re
+ 160:ws2812/light_ws2812.c **** #if (w1_nops&1)
+ 161:ws2812/light_ws2812.c **** w_nop1
+ 162:ws2812/light_ws2812.c **** #endif
+ 163:ws2812/light_ws2812.c **** #if (w1_nops&2)
+ 164:ws2812/light_ws2812.c **** w_nop2
+ 165:ws2812/light_ws2812.c **** #endif
+ 166:ws2812/light_ws2812.c **** #if (w1_nops&4)
+ 167:ws2812/light_ws2812.c **** w_nop4
+ 168:ws2812/light_ws2812.c **** #endif
+ 169:ws2812/light_ws2812.c **** #if (w1_nops&8)
+ 170:ws2812/light_ws2812.c **** w_nop8
+ 171:ws2812/light_ws2812.c **** #endif
+ 172:ws2812/light_ws2812.c **** #if (w1_nops&16)
+ 173:ws2812/light_ws2812.c **** w_nop16
+ 174:ws2812/light_ws2812.c **** #endif
+ 175:ws2812/light_ws2812.c ****     "       sbrs  %1,7  \n\t"    //  '1' [03] '0' [02]
+ 176:ws2812/light_ws2812.c ****     "       out   %2,%4 \n\t"    //  '1' [--] '0' [03] - fe-low
+ 177:ws2812/light_ws2812.c ****     "       lsl   %1    \n\t"    //  '1' [04] '0' [04]
+ 178:ws2812/light_ws2812.c **** #if (w2_nops&1)
+ 179:ws2812/light_ws2812.c ****   w_nop1
+ 180:ws2812/light_ws2812.c **** #endif
+ 181:ws2812/light_ws2812.c **** #if (w2_nops&2)
+ 182:ws2812/light_ws2812.c ****   w_nop2
+ 183:ws2812/light_ws2812.c **** #endif
+ 184:ws2812/light_ws2812.c **** #if (w2_nops&4)
+ 185:ws2812/light_ws2812.c ****   w_nop4
+ 186:ws2812/light_ws2812.c **** #endif
+ 187:ws2812/light_ws2812.c **** #if (w2_nops&8)
+ 188:ws2812/light_ws2812.c ****   w_nop8
+ 189:ws2812/light_ws2812.c **** #endif
+ 190:ws2812/light_ws2812.c **** #if (w2_nops&16)
+ 191:ws2812/light_ws2812.c ****   w_nop16 
+ 192:ws2812/light_ws2812.c **** #endif
+ 193:ws2812/light_ws2812.c ****     "       out   %2,%4 \n\t"    //  '1' [+1] '0' [+1] - fe-high
+ 194:ws2812/light_ws2812.c **** #if (w3_nops&1)
+ 195:ws2812/light_ws2812.c **** w_nop1
+ 196:ws2812/light_ws2812.c **** #endif
+ 197:ws2812/light_ws2812.c **** #if (w3_nops&2)
+ 198:ws2812/light_ws2812.c **** w_nop2
+ 199:ws2812/light_ws2812.c **** #endif
+ 200:ws2812/light_ws2812.c **** #if (w3_nops&4)
+ 201:ws2812/light_ws2812.c **** w_nop4
+ 202:ws2812/light_ws2812.c **** #endif
+ 203:ws2812/light_ws2812.c **** #if (w3_nops&8)
+ 204:ws2812/light_ws2812.c **** w_nop8
+ 205:ws2812/light_ws2812.c **** #endif
+ 206:ws2812/light_ws2812.c **** #if (w3_nops&16)
+ 207:ws2812/light_ws2812.c **** w_nop16
+ 208:ws2812/light_ws2812.c **** #endif
+ 209:ws2812/light_ws2812.c **** 
+ 210:ws2812/light_ws2812.c ****     "       dec   %0    \n\t"    //  '1' [+2] '0' [+2]
+ 211:ws2812/light_ws2812.c ****     "       brne  loop%=\n\t"    //  '1' [+3] '0' [+4]
+ 212:ws2812/light_ws2812.c ****     :	"=&d" (ctr)
+ 213:ws2812/light_ws2812.c ****     :	"r" (curbyte), "I" (_SFR_IO_ADDR(ws2812_PORTREG)), "r" (maskhi), "r" (masklo)
+ 214:ws2812/light_ws2812.c ****     );
+ 215:ws2812/light_ws2812.c **** }
+ 216:ws2812/light_ws2812.c **** 
+ 217:ws2812/light_ws2812.c **** void inline ws2812_sendarray_mask(uint8_t *data,uint16_t datlen,uint8_t maskhi)
+ 218:ws2812/light_ws2812.c **** {
+ 390               	.LM26:
+ 391               	.LFBB4:
+ 392 00fc DF92      		push r13
+ 393 00fe EF92      		push r14
+ 394 0100 FF92      		push r15
+ 395 0102 0F93      		push r16
+ 396 0104 1F93      		push r17
+ 397 0106 CF93      		push r28
+ 398 0108 DF93      		push r29
+ 399               	/* prologue: function */
+ 400               	/* frame size = 0 */
+ 401               	/* stack size = 7 */
+ 402               	.L__stack_usage = 7
+ 219:ws2812/light_ws2812.c ****   uint8_t curbyte,masklo;
+ 220:ws2812/light_ws2812.c ****   uint8_t sreg_prev;
+ 221:ws2812/light_ws2812.c **** 
+ 222:ws2812/light_ws2812.c ****   ws2812_DDRREG |= maskhi; // Enable output
+ 404               	.LM27:
+ 405 010a 2AB3      		in r18,0x1a
+ 406 010c 242B      		or r18,r20
+ 407 010e 2ABB      		out 0x1a,r18
+ 223:ws2812/light_ws2812.c **** 
+ 224:ws2812/light_ws2812.c ****   masklo	=~maskhi&ws2812_PORTREG;
+ 409               	.LM28:
+ 410 0110 2BB3      		in r18,0x1b
+ 411 0112 F42E      		mov r15,r20
+ 412 0114 F094      		com r15
+ 413 0116 F222      		and r15,r18
+ 225:ws2812/light_ws2812.c ****   maskhi |=        ws2812_PORTREG;
+ 415               	.LM29:
+ 416 0118 2BB3      		in r18,0x1b
+ 417 011a E42E      		mov r14,r20
+ 418 011c E22A      		or r14,r18
+ 226:ws2812/light_ws2812.c **** 
+ 227:ws2812/light_ws2812.c ****   sreg_prev=SREG;
+ 420               	.LM30:
+ 421 011e DFB6      		in r13,__SREG__
+ 228:ws2812/light_ws2812.c ****   cli();
+ 423               	.LM31:
+ 424               	/* #APP */
+ 425               	 ;  228 "ws2812/light_ws2812.c" 1
+ 426 0120 F894      		cli
+ 427               	 ;  0 "" 2
+ 428               	/* #NOAPP */
+ 429 0122 EC01      		movw r28,r24
+ 430 0124 8C01      		movw r16,r24
+ 431 0126 060F      		add r16,r22
+ 432 0128 171F      		adc r17,r23
+ 433               	.L14:
+ 229:ws2812/light_ws2812.c **** 
+ 230:ws2812/light_ws2812.c ****   while (datlen--) {
+ 435               	.LM32:
+ 436 012a C017      		cp r28,r16
+ 437 012c D107      		cpc r29,r17
+ 438 012e 01F0      		breq .L16
+ 231:ws2812/light_ws2812.c ****     curbyte=*data++;
+ 232:ws2812/light_ws2812.c ****     ws2812_send_byte(curbyte, maskhi, masklo);
+ 440               	.LM33:
+ 441 0130 4F2D      		mov r20,r15
+ 442 0132 6E2D      		mov r22,r14
+ 443 0134 8991      		ld r24,Y+
+ 444 0136 00D0      		rcall ws2812_send_byte
+ 445 0138 00C0      		rjmp .L14
+ 446               	.L16:
+ 233:ws2812/light_ws2812.c ****   }
+ 234:ws2812/light_ws2812.c **** 
+ 235:ws2812/light_ws2812.c ****   SREG=sreg_prev;
+ 448               	.LM34:
+ 449 013a DFBE      		out __SREG__,r13
+ 450               	/* epilogue start */
+ 236:ws2812/light_ws2812.c **** }
+ 452               	.LM35:
+ 453 013c DF91      		pop r29
+ 454 013e CF91      		pop r28
+ 455 0140 1F91      		pop r17
+ 456 0142 0F91      		pop r16
+ 457 0144 FF90      		pop r15
+ 458 0146 EF90      		pop r14
+ 459 0148 DF90      		pop r13
+ 460 014a 0895      		ret
+ 466               	.Lscope4:
+ 468               		.stabd	78,0,0
+ 473               	.global	ws2812_setleds_pin
+ 475               	ws2812_setleds_pin:
+ 476               		.stabd	46,0,0
+  25:ws2812/light_ws2812.c ****   ws2812_sendarray_mask((uint8_t*)ledarray,leds+leds+leds,pinmask);
+ 478               	.LM36:
+ 479               	.LFBB5:
+ 480               	/* prologue: function */
+ 481               	/* frame size = 0 */
+ 482               	/* stack size = 0 */
+ 483               	.L__stack_usage = 0
+  26:ws2812/light_ws2812.c ****   _delay_us(50);
+ 485               	.LM37:
+ 486 014c 9B01      		movw r18,r22
+ 487 014e 220F      		lsl r18
+ 488 0150 331F      		rol r19
+ 489 0152 620F      		add r22,r18
+ 490 0154 731F      		adc r23,r19
+ 491 0156 00D0      		rcall ws2812_sendarray_mask
+ 492               	.LBB18:
+ 493               	.LBB19:
+ 495               	.Ltext5:
+ 497               	.LM38:
+ 498 0158 85E8      		ldi r24,lo8(-123)
+ 499 015a 8A95      	1:	dec r24
+ 500 015c 01F4      		brne 1b
+ 501 015e 0000      		nop
+ 502 0160 0895      		ret
+ 503               	.LBE19:
+ 504               	.LBE18:
+ 506               	.Lscope5:
+ 508               		.stabd	78,0,0
+ 512               	.global	ws2812_setleds
+ 514               	ws2812_setleds:
+ 515               		.stabd	46,0,0
+ 517               	.Ltext6:
+  20:ws2812/light_ws2812.c ****    ws2812_setleds_pin(ledarray,leds, _BV(ws2812_pin));
+ 519               	.LM39:
+ 520               	.LFBB6:
+ 521               	/* prologue: function */
+ 522               	/* frame size = 0 */
+ 523               	/* stack size = 0 */
+ 524               	.L__stack_usage = 0
+  21:ws2812/light_ws2812.c **** }
+ 526               	.LM40:
+ 527 0162 42E0      		ldi r20,lo8(2)
+ 528 0164 00C0      		rjmp ws2812_setleds_pin
+ 530               	.Lscope6:
+ 532               		.stabd	78,0,0
+ 536               	.global	ws2812_setleds_rgbw
+ 538               	ws2812_setleds_rgbw:
+ 539               		.stabd	46,0,0
+  32:ws2812/light_ws2812.c ****   ws2812_sendarray_mask((uint8_t*)ledarray,leds<<2,_BV(ws2812_pin));
+ 541               	.LM41:
+ 542               	.LFBB7:
+ 543               	/* prologue: function */
+ 544               	/* frame size = 0 */
+ 545               	/* stack size = 0 */
+ 546               	.L__stack_usage = 0
+  33:ws2812/light_ws2812.c ****   _delay_us(80);
+ 548               	.LM42:
+ 549 0166 660F      		lsl r22
+ 550 0168 771F      		rol r23
+ 551 016a 660F      		lsl r22
+ 552 016c 771F      		rol r23
+ 553 016e 42E0      		ldi r20,lo8(2)
+ 554 0170 00D0      		rcall ws2812_sendarray_mask
+ 555               	.LBB20:
+ 556               	.LBB21:
+ 558               	.Ltext7:
+ 560               	.LM43:
+ 561 0172 85ED      		ldi r24,lo8(-43)
+ 562 0174 8A95      	1:	dec r24
+ 563 0176 01F4      		brne 1b
+ 564 0178 0000      		nop
+ 565 017a 0895      		ret
+ 566               	.LBE21:
+ 567               	.LBE20:
+ 569               	.Lscope7:
+ 571               		.stabd	78,0,0
+ 575               	.global	ws2812_sendarray
+ 577               	ws2812_sendarray:
+ 578               		.stabd	46,0,0
+ 580               	.Ltext8:
+  88:ws2812/light_ws2812.c ****   ws2812_sendarray_mask(data,datlen,_BV(ws2812_pin));
+ 582               	.LM44:
+ 583               	.LFBB8:
+ 584               	/* prologue: function */
+ 585               	/* frame size = 0 */
+ 586               	/* stack size = 0 */
+ 587               	.L__stack_usage = 0
+  89:ws2812/light_ws2812.c **** }
+ 589               	.LM45:
+ 590 017c 42E0      		ldi r20,lo8(2)
+ 591 017e 00C0      		rjmp ws2812_sendarray_mask
+ 593               	.Lscope8:
+ 595               		.stabd	78,0,0
+ 597               	.Letext0:
+ 598               		.ident	"GCC: (GNU) 4.9.2"
+DEFINED SYMBOLS
+                            *ABS*:00000000 light_ws2812.c
+     /tmp/ccOefhWp.s:2      *ABS*:0000003e __SP_H__
+     /tmp/ccOefhWp.s:3      *ABS*:0000003d __SP_L__
+     /tmp/ccOefhWp.s:4      *ABS*:0000003f __SREG__
+     /tmp/ccOefhWp.s:5      *ABS*:00000000 __tmp_reg__
+     /tmp/ccOefhWp.s:6      *ABS*:00000001 __zero_reg__
+     /tmp/ccOefhWp.s:111    .text:00000000 ws2812_send_byte
+     /tmp/ccOefhWp.s:126    .text:00000004 loop7
+     /tmp/ccOefhWp.s:148    .text:00000018 ws2812_setleds_constant
+     /tmp/ccOefhWp.s:267    .text:0000008a ws2812_setleds_constant_rgbw
+     /tmp/ccOefhWp.s:387    .text:000000fc ws2812_sendarray_mask
+     /tmp/ccOefhWp.s:475    .text:0000014c ws2812_setleds_pin
+     /tmp/ccOefhWp.s:514    .text:00000162 ws2812_setleds
+     /tmp/ccOefhWp.s:538    .text:00000166 ws2812_setleds_rgbw
+     /tmp/ccOefhWp.s:577    .text:0000017c ws2812_sendarray
+
+NO UNDEFINED SYMBOLS

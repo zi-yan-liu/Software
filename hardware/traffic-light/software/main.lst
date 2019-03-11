@@ -1,0 +1,896 @@
+   1               		.file	"main.c"
+   2               	__SP_H__ = 0x3e
+   3               	__SP_L__ = 0x3d
+   4               	__SREG__ = 0x3f
+   5               	__tmp_reg__ = 0
+   6               	__zero_reg__ = 1
+   9               		.text
+  10               	.Ltext0:
+ 111               	.global	__floatunsisf
+ 112               	.global	__divsf3
+ 113               	.global	__mulsf3
+ 114               	.global	__fixunssfsi
+ 118               	getValue:
+ 119               		.stabd	46,0,0
+   1:main.c        **** /*
+   2:main.c        **** * Neopixel I2C Slave application
+   3:main.c        **** *
+   4:main.c        **** * At boot, scrolls a bright spot (init_color) along the array
+   5:main.c        **** * Will stop as soon as an i2c transaction is received
+   6:main.c        **** */
+   7:main.c        **** 
+   8:main.c        **** #include <util/delay.h>
+   9:main.c        **** #include <avr/io.h>
+  10:main.c        **** #include <avr/interrupt.h>
+  11:main.c        **** #include <avr/pgmspace.h>
+  12:main.c        **** 
+  13:main.c        **** #include "i2c/i2c_slave_defs.h"
+  14:main.c        **** #include "i2c/i2c_machine.h"
+  15:main.c        **** #include "ws2812/light_ws2812.h"
+  16:main.c        **** 
+  17:main.c        **** #define StartRegister 0x06
+  18:main.c        **** 
+  19:main.c        **** volatile uint8_t i2c_reg[I2C_N_REG];
+  20:main.c        **** volatile uint8_t led_data[N_LEDS*3];
+  21:main.c        **** const uint8_t init_color[3] PROGMEM = { 0x00, 0x00, 0xFF};
+  22:main.c        **** 
+  23:main.c        **** static inline void set_leds_global(void)
+  24:main.c        **** {
+  25:main.c        **** 	ws2812_setleds_constant((struct cRGB *)&REG_GLB_G, N_LEDS);
+  26:main.c        **** }
+  27:main.c        **** 
+  28:main.c        **** static inline void update_leds(void)
+  29:main.c        **** {
+  30:main.c        **** 	ws2812_sendarray(led_data, N_LEDS * 3);
+  31:main.c        **** }
+  32:main.c        **** 
+  33:main.c        **** static inline char getValue(int Addr)
+  34:main.c        **** {
+ 121               	.LM0:
+ 122               	.LFBB1:
+ 123 0000 CF92      		push r12
+ 124 0002 DF92      		push r13
+ 125 0004 EF92      		push r14
+ 126 0006 FF92      		push r15
+ 127 0008 CF93      		push r28
+ 128 000a DF93      		push r29
+ 129               	/* prologue: function */
+ 130               	/* frame size = 0 */
+ 131               	/* stack size = 6 */
+ 132               	.L__stack_usage = 6
+  35:main.c        **** 	uint16_t iOn=0;
+  36:main.c        **** 	uint16_t iOff=0;
+  37:main.c        **** 	
+  38:main.c        **** 	iOn=(i2c_reg[Addr]<<8) + i2c_reg[Addr+1];
+ 134               	.LM1:
+ 135 000c DC01      		movw r26,r24
+ 136 000e A050      		subi r26,lo8(-(i2c_reg))
+ 137 0010 B040      		sbci r27,hi8(-(i2c_reg))
+ 138 0012 6C91      		ld r22,X
+ 139 0014 FC01      		movw r30,r24
+ 140 0016 E050      		subi r30,lo8(-(i2c_reg+1))
+ 141 0018 F040      		sbci r31,hi8(-(i2c_reg+1))
+ 142 001a 8081      		ld r24,Z
+  39:main.c        **** 	iOff=(i2c_reg[Addr]<<8) + i2c_reg[Addr+1];
+ 144               	.LM2:
+ 145 001c CC91      		ld r28,X
+ 146 001e D081      		ld r29,Z
+  38:main.c        **** 	iOff=(i2c_reg[Addr]<<8) + i2c_reg[Addr+1];
+ 148               	.LM3:
+ 149 0020 70E0      		ldi r23,0
+ 150 0022 762F      		mov r23,r22
+ 151 0024 6627      		clr r22
+ 152 0026 680F      		add r22,r24
+ 153 0028 711D      		adc r23,__zero_reg__
+  40:main.c        **** 	
+  41:main.c        **** 	//return (char) (((uint32_t)iOn)<<8)/((uint32_t)iOff);
+  42:main.c        **** 	return (char) ((float)iOn/iOff*255);
+ 155               	.LM4:
+ 156 002a 80E0      		ldi r24,0
+ 157 002c 90E0      		ldi r25,0
+ 158 002e 00D0      		rcall __floatunsisf
+ 159 0030 6B01      		movw r12,r22
+ 160 0032 7C01      		movw r14,r24
+  39:main.c        **** 	
+ 162               	.LM5:
+ 163 0034 8C2F      		mov r24,r28
+ 164 0036 90E0      		ldi r25,0
+ 165 0038 982F      		mov r25,r24
+ 166 003a 8827      		clr r24
+ 167 003c 8D0F      		add r24,r29
+ 168 003e 911D      		adc r25,__zero_reg__
+ 170               	.LM6:
+ 171 0040 BC01      		movw r22,r24
+ 172 0042 80E0      		ldi r24,0
+ 173 0044 90E0      		ldi r25,0
+ 174 0046 00D0      		rcall __floatunsisf
+ 175 0048 9B01      		movw r18,r22
+ 176 004a AC01      		movw r20,r24
+ 177 004c C701      		movw r24,r14
+ 178 004e B601      		movw r22,r12
+ 179 0050 00D0      		rcall __divsf3
+ 180 0052 20E0      		ldi r18,0
+ 181 0054 30E0      		ldi r19,0
+ 182 0056 4FE7      		ldi r20,lo8(127)
+ 183 0058 53E4      		ldi r21,lo8(67)
+ 184 005a 00D0      		rcall __mulsf3
+ 185 005c 00D0      		rcall __fixunssfsi
+ 186 005e 862F      		mov r24,r22
+ 187               	/* epilogue start */
+  43:main.c        **** 	
+  44:main.c        **** 	//uint32_t temp=iOn;
+  45:main.c        **** 	//temp=temp*255;
+  46:main.c        **** 	//temp=temp/iOff;
+  47:main.c        **** 	//return (char)temp;
+  48:main.c        **** }
+ 189               	.LM7:
+ 190 0060 DF91      		pop r29
+ 191 0062 CF91      		pop r28
+ 192 0064 FF90      		pop r15
+ 193 0066 EF90      		pop r14
+ 194 0068 DF90      		pop r13
+ 195 006a CF90      		pop r12
+ 196 006c 0895      		ret
+ 198               	.Lscope1:
+ 200               		.stabd	78,0,0
+ 202               	.global	do_reset
+ 204               	do_reset:
+ 205               		.stabd	46,0,0
+  49:main.c        **** 
+  50:main.c        **** 
+  51:main.c        **** static inline void calc_led_values(void)
+  52:main.c        **** {
+  53:main.c        **** 	char i=0;
+  54:main.c        **** 	for (i=0;i<N_LEDS;i++)
+  55:main.c        **** 	{
+  56:main.c        **** 		//change red and green channel
+  57:main.c        **** 		led_data[3*i+1]=getValue(StartRegister+i*12+0);
+  58:main.c        **** 		led_data[3*i]=getValue(StartRegister+i*12+4);
+  59:main.c        **** 		led_data[3*i+2]=getValue(StartRegister+i*12+8);
+  60:main.c        **** 	}
+  61:main.c        **** }
+  62:main.c        **** 
+  63:main.c        **** void do_reset(void)
+  64:main.c        **** {
+ 207               	.LM8:
+ 208               	.LFBB2:
+ 209               	/* prologue: function */
+ 210               	/* frame size = 0 */
+ 211               	/* stack size = 0 */
+ 212               	.L__stack_usage = 0
+  65:main.c        **** 	char i = N_LEDS * 3;
+  66:main.c        **** 	volatile uint8_t *p = i2c_reg + I2C_N_GLB_REG;
+  67:main.c        **** 
+  68:main.c        **** 	cli();
+ 214               	.LM9:
+ 215               	/* #APP */
+ 216               	 ;  68 "main.c" 1
+ 217 006e F894      		cli
+ 218               	 ;  0 "" 2
+  69:main.c        **** 	REG_GLB_G = 0;
+ 220               	.LM10:
+ 221               	/* #NOAPP */
+ 222 0070 1092 0000 		sts i2c_reg+1,__zero_reg__
+  70:main.c        **** 	REG_GLB_R = 0;
+ 224               	.LM11:
+ 225 0074 1092 0000 		sts i2c_reg+2,__zero_reg__
+  71:main.c        **** 	REG_GLB_B = 0;
+ 227               	.LM12:
+ 228 0078 1092 0000 		sts i2c_reg+3,__zero_reg__
+  72:main.c        **** 	ws2812_setleds_constant((struct cRGB *)&REG_GLB_G, N_LEDS);
+ 230               	.LM13:
+ 231 007c 64E1      		ldi r22,lo8(20)
+ 232 007e 70E0      		ldi r23,0
+ 233 0080 80E0      		ldi r24,lo8(i2c_reg+1)
+ 234 0082 90E0      		ldi r25,hi8(i2c_reg+1)
+ 235 0084 00D0      		rcall ws2812_setleds_constant
+ 236               	.LBB10:
+  73:main.c        **** 	REG_GLB_G = pgm_read_byte(init_color);
+ 238               	.LM14:
+ 239 0086 E0E0      		ldi r30,lo8(init_color)
+ 240 0088 F0E0      		ldi r31,hi8(init_color)
+ 241               	/* #APP */
+ 242               	 ;  73 "main.c" 1
+ 243 008a E491      		lpm r30, Z
+ 244               		
+ 245               	 ;  0 "" 2
+ 246               	/* #NOAPP */
+ 247               	.LBE10:
+ 248 008c E093 0000 		sts i2c_reg+1,r30
+ 249               	.LBB11:
+  74:main.c        **** 	REG_GLB_R = pgm_read_byte(init_color + 1);
+ 251               	.LM15:
+ 252 0090 E0E0      		ldi r30,lo8(init_color+1)
+ 253 0092 F0E0      		ldi r31,hi8(init_color+1)
+ 254               	/* #APP */
+ 255               	 ;  74 "main.c" 1
+ 256 0094 E491      		lpm r30, Z
+ 257               		
+ 258               	 ;  0 "" 2
+ 259               	/* #NOAPP */
+ 260               	.LBE11:
+ 261 0096 E093 0000 		sts i2c_reg+2,r30
+ 262               	.LBB12:
+  75:main.c        **** 	REG_GLB_B = pgm_read_byte(init_color + 2);
+ 264               	.LM16:
+ 265 009a E0E0      		ldi r30,lo8(init_color+2)
+ 266 009c F0E0      		ldi r31,hi8(init_color+2)
+ 267               	/* #APP */
+ 268               	 ;  75 "main.c" 1
+ 269 009e E491      		lpm r30, Z
+ 270               		
+ 271               	 ;  0 "" 2
+ 272               	/* #NOAPP */
+ 273               	.LBE12:
+ 274 00a0 E093 0000 		sts i2c_reg+3,r30
+  76:main.c        **** 	REG_CTRL = 0;
+ 276               	.LM17:
+ 277 00a4 1092 0000 		sts i2c_reg,__zero_reg__
+  77:main.c        **** 
+  78:main.c        **** 	/* Reset the registers or we'll just go back to the old values! */
+  79:main.c        **** 	while (i--) {
+ 279               	.LM18:
+ 280 00a8 80E0      		ldi r24,0
+ 281 00aa 90E0      		ldi r25,0
+ 282               	.L3:
+ 283 00ac FC01      		movw r30,r24
+ 284 00ae E050      		subi r30,lo8(-(i2c_reg+4))
+ 285 00b0 F040      		sbci r31,hi8(-(i2c_reg+4))
+ 286 00b2 0196      		adiw r24,1
+ 287 00b4 8D33      		cpi r24,61
+ 288 00b6 9105      		cpc r25,__zero_reg__
+ 289 00b8 01F0      		breq .L6
+  80:main.c        **** 		*p = 0;
+ 291               	.LM19:
+ 292 00ba 1082      		st Z,__zero_reg__
+ 293 00bc 00C0      		rjmp .L3
+ 294               	.L6:
+  81:main.c        **** 		p++;
+  82:main.c        **** 	}
+  83:main.c        **** 
+  84:main.c        **** 	sei();
+ 296               	.LM20:
+ 297               	/* #APP */
+ 298               	 ;  84 "main.c" 1
+ 299 00be 7894      		sei
+ 300               	 ;  0 "" 2
+ 301               	/* #NOAPP */
+ 302 00c0 0895      		ret
+ 304               	.Lscope2:
+ 306               		.stabd	78,0,0
+ 308               	.global	swirly
+ 310               	swirly:
+ 311               		.stabd	46,0,0
+  85:main.c        **** }
+  86:main.c        **** 
+  87:main.c        **** void swirly(void)
+  88:main.c        **** {
+ 313               	.LM21:
+ 314               	.LFBB3:
+ 315 00c2 0F93      		push r16
+ 316 00c4 1F93      		push r17
+ 317 00c6 CF93      		push r28
+ 318 00c8 DF93      		push r29
+ 319               	/* prologue: function */
+ 320               	/* frame size = 0 */
+ 321               	/* stack size = 4 */
+ 322               	.L__stack_usage = 4
+ 323               	.LBB23:
+  89:main.c        **** 	uint8_t led = N_LEDS;
+  90:main.c        **** 	volatile uint8_t *p = led_data + (N_LEDS * 3);//i2c_reg + I2C_N_GLB_REG + (N_LEDS * 3);
+  91:main.c        **** 	uint8_t g = pgm_read_byte(init_color);
+ 325               	.LM22:
+ 326 00ca 40E0      		ldi r20,lo8(init_color)
+ 327 00cc 50E0      		ldi r21,hi8(init_color)
+ 328 00ce FA01      		movw r30,r20
+ 329               	/* #APP */
+ 330               	 ;  91 "main.c" 1
+ 331 00d0 A491      		lpm r26, Z
+ 332               		
+ 333               	 ;  0 "" 2
+ 334               	/* #NOAPP */
+ 335               	.LBE23:
+ 336               	.LBB24:
+  92:main.c        **** 	uint8_t r = pgm_read_byte(init_color + 1);
+ 338               	.LM23:
+ 339 00d2 20E0      		ldi r18,lo8(init_color+1)
+ 340 00d4 30E0      		ldi r19,hi8(init_color+1)
+ 341 00d6 F901      		movw r30,r18
+ 342               	/* #APP */
+ 343               	 ;  92 "main.c" 1
+ 344 00d8 B491      		lpm r27, Z
+ 345               		
+ 346               	 ;  0 "" 2
+ 347               	/* #NOAPP */
+ 348               	.LBE24:
+ 349               	.LBB25:
+  93:main.c        **** 	uint8_t b = pgm_read_byte(init_color + 2);
+ 351               	.LM24:
+ 352 00da 60E0      		ldi r22,lo8(init_color+2)
+ 353 00dc 70E0      		ldi r23,hi8(init_color+2)
+ 354 00de FB01      		movw r30,r22
+ 355               	/* #APP */
+ 356               	 ;  93 "main.c" 1
+ 357 00e0 1491      		lpm r17, Z
+ 358               		
+ 359               	 ;  0 "" 2
+ 360               	/* #NOAPP */
+ 361               	.LBE25:
+  90:main.c        **** 	uint8_t g = pgm_read_byte(init_color);
+ 363               	.LM25:
+ 364 00e2 80E0      		ldi r24,lo8(led_data+60)
+ 365 00e4 90E0      		ldi r25,hi8(led_data+60)
+ 366               	.L8:
+  94:main.c        **** 	uint8_t tmp;
+  95:main.c        **** 
+  96:main.c        **** 	/* Initialise a bright spot with a tail:
+  97:main.c        **** 	 * { 255, 127, 63, 31, 15, 15, 15, 15 ... }
+  98:main.c        **** 	 */
+  99:main.c        **** 	while (led--) {
+ 368               	.LM26:
+ 369 00e6 F0E0      		ldi r31,hi8(led_data)
+ 370 00e8 8030      		cpi r24,lo8(led_data)
+ 371 00ea 9F07      		cpc r25,r31
+ 372 00ec 01F0      		breq .L40
+ 100:main.c        **** 		*(--p) = b;
+ 374               	.LM27:
+ 375 00ee EC01      		movw r28,r24
+ 376 00f0 2197      		sbiw r28,1
+ 377 00f2 1883      		st Y,r17
+ 101:main.c        **** 		if (b & 0xf0)
+ 379               	.LM28:
+ 380 00f4 F12F      		mov r31,r17
+ 381 00f6 F07F      		andi r31,lo8(-16)
+ 382 00f8 01F0      		breq .L9
+ 102:main.c        **** 			b >>= 1;
+ 384               	.LM29:
+ 385 00fa 1695      		lsr r17
+ 386               	.L9:
+ 103:main.c        **** 
+ 104:main.c        **** 		*(--p) = r;
+ 388               	.LM30:
+ 389 00fc EC01      		movw r28,r24
+ 390 00fe 2297      		sbiw r28,2
+ 391 0100 B883      		st Y,r27
+ 105:main.c        **** 		if (r & 0xf0)
+ 393               	.LM31:
+ 394 0102 FB2F      		mov r31,r27
+ 395 0104 F07F      		andi r31,lo8(-16)
+ 396 0106 01F0      		breq .L10
+ 106:main.c        **** 			r >>= 1;
+ 398               	.LM32:
+ 399 0108 B695      		lsr r27
+ 400               	.L10:
+ 401 010a EC01      		movw r28,r24
+ 402 010c 2397      		sbiw r28,3
+ 107:main.c        **** 
+ 108:main.c        **** 		*(--p) = g;
+ 404               	.LM33:
+ 405 010e A883      		st Y,r26
+ 109:main.c        **** 		if (g & 0xf0)
+ 407               	.LM34:
+ 408 0110 FA2F      		mov r31,r26
+ 409 0112 F07F      		andi r31,lo8(-16)
+ 410 0114 01F0      		breq .L11
+ 110:main.c        **** 			g >>= 1;
+ 412               	.LM35:
+ 413 0116 A695      		lsr r26
+ 414               	.L11:
+  88:main.c        **** 	uint8_t led = N_LEDS;
+ 416               	.LM36:
+ 417 0118 CE01      		movw r24,r28
+ 418 011a 00C0      		rjmp .L8
+ 419               	.L40:
+ 420               	.LBB26:
+ 111:main.c        **** 
+ 112:main.c        **** 	}
+ 113:main.c        **** 
+ 114:main.c        **** 	/* Shuffle the bright spot along */
+ 115:main.c        **** 	g = pgm_read_byte(init_color);
+ 422               	.LM37:
+ 423 011c FA01      		movw r30,r20
+ 424               	/* #APP */
+ 425               	 ;  115 "main.c" 1
+ 426 011e D491      		lpm r29, Z
+ 427               		
+ 428               	 ;  0 "" 2
+ 429               	/* #NOAPP */
+ 430               	.LBE26:
+ 431               	.LBB27:
+ 116:main.c        **** 	r = pgm_read_byte(init_color + 1);
+ 433               	.LM38:
+ 434 0120 F901      		movw r30,r18
+ 435               	/* #APP */
+ 436               	 ;  116 "main.c" 1
+ 437 0122 C491      		lpm r28, Z
+ 438               		
+ 439               	 ;  0 "" 2
+ 440               	/* #NOAPP */
+ 441               	.LBE27:
+ 442               	.LBB28:
+ 117:main.c        **** 	b = pgm_read_byte(init_color + 2);
+ 444               	.LM39:
+ 445 0124 FB01      		movw r30,r22
+ 446               	/* #APP */
+ 447               	 ;  117 "main.c" 1
+ 448 0126 1491      		lpm r17, Z
+ 449               		
+ 450               	 ;  0 "" 2
+ 451               	/* #NOAPP */
+ 452               	.L21:
+ 453               	.LBE28:
+ 454               	.LBB29:
+ 455               	.LBB30:
+  30:main.c        **** }
+ 457               	.LM40:
+ 458 0128 6CE3      		ldi r22,lo8(60)
+ 459 012a 70E0      		ldi r23,0
+ 460 012c 80E0      		ldi r24,lo8(led_data)
+ 461 012e 90E0      		ldi r25,hi8(led_data)
+ 462 0130 00D0      		rcall ws2812_sendarray
+ 463               	.LBE30:
+ 464               	.LBE29:
+ 118:main.c        **** 	while (1)
+ 119:main.c        **** 	{
+ 120:main.c        **** 		update_leds();
+ 121:main.c        **** 
+ 122:main.c        **** 		led = N_LEDS;
+ 123:main.c        **** 		p = &i2c_reg[I2C_N_GLB_REG];
+ 466               	.LM41:
+ 467 0132 A0E0      		ldi r26,lo8(i2c_reg+4)
+ 468 0134 B0E0      		ldi r27,hi8(i2c_reg+4)
+ 122:main.c        **** 		p = &i2c_reg[I2C_N_GLB_REG];
+ 470               	.LM42:
+ 471 0136 84E1      		ldi r24,lo8(20)
+ 472               	.L13:
+ 124:main.c        **** 		while (led--) {
+ 474               	.LM43:
+ 475 0138 8150      		subi r24,1
+ 476 013a 00F0      		brcs .L41
+ 125:main.c        **** 			tmp = *p;
+ 478               	.LM44:
+ 479 013c 9C91      		ld r25,X
+ 126:main.c        **** 			*(p++) = g;
+ 481               	.LM45:
+ 482 013e DC93      		st X,r29
+ 127:main.c        **** 			if (led)
+ 484               	.LM46:
+ 485 0140 8111      		cpse r24,__zero_reg__
+ 128:main.c        **** 				g = tmp;
+ 487               	.LM47:
+ 488 0142 D92F      		mov r29,r25
+ 489               	.L14:
+ 129:main.c        **** 
+ 130:main.c        **** 			tmp = *p;
+ 491               	.LM48:
+ 492 0144 1196      		adiw r26,1
+ 493 0146 9C91      		ld r25,X
+ 494 0148 1197      		sbiw r26,1
+ 131:main.c        **** 			*(p++) = r;
+ 496               	.LM49:
+ 497 014a 1196      		adiw r26,1
+ 498 014c CC93      		st X,r28
+ 499 014e 1197      		sbiw r26,1
+ 132:main.c        **** 			if (led)
+ 501               	.LM50:
+ 502 0150 8111      		cpse r24,__zero_reg__
+ 133:main.c        **** 				r = tmp;
+ 504               	.LM51:
+ 505 0152 C92F      		mov r28,r25
+ 506               	.L15:
+ 134:main.c        **** 
+ 135:main.c        **** 			tmp = *p;
+ 508               	.LM52:
+ 509 0154 1296      		adiw r26,2
+ 510 0156 9C91      		ld r25,X
+ 511 0158 1297      		sbiw r26,2
+ 512 015a 9D01      		movw r18,r26
+ 513 015c 2D5F      		subi r18,-3
+ 514 015e 3F4F      		sbci r19,-1
+ 136:main.c        **** 			*(p++) = b;
+ 516               	.LM53:
+ 517 0160 1296      		adiw r26,2
+ 518 0162 1C93      		st X,r17
+ 137:main.c        **** 			if (led)
+ 520               	.LM54:
+ 521 0164 8111      		cpse r24,__zero_reg__
+ 138:main.c        **** 				b = tmp;
+ 523               	.LM55:
+ 524 0166 192F      		mov r17,r25
+ 525               	.L16:
+ 526 0168 D901      		movw r26,r18
+ 527 016a 00C0      		rjmp .L13
+ 528               	.L41:
+ 124:main.c        **** 			tmp = *p;
+ 530               	.LM56:
+ 531 016c 07E4      		ldi r16,lo8(71)
+ 532               	.L18:
+ 533 016e 0150      		subi r16,lo8(-(-1))
+ 139:main.c        **** 		}
+ 140:main.c        **** 
+ 141:main.c        **** 		/* As soon as there's a transaction to handle, bail out */
+ 142:main.c        **** 		tmp = 70;
+ 143:main.c        **** 		while (tmp--) {
+ 535               	.LM57:
+ 536 0170 01F0      		breq .L21
+ 144:main.c        **** 			if (i2c_check_stop())
+ 538               	.LM58:
+ 539 0172 00D0      		rcall i2c_check_stop
+ 540 0174 8111      		cpse r24,__zero_reg__
+ 541 0176 00C0      		rjmp .L7
+ 542               	.LBB31:
+ 543               	.LBB32:
+ 545               	.Ltext1:
+   1:/usr/lib/avr/include/util/delay.h **** /* Copyright (c) 2002, Marek Michalkiewicz
+   2:/usr/lib/avr/include/util/delay.h ****    Copyright (c) 2004,2005,2007 Joerg Wunsch
+   3:/usr/lib/avr/include/util/delay.h ****    Copyright (c) 2007  Florin-Viorel Petrov
+   4:/usr/lib/avr/include/util/delay.h ****    All rights reserved.
+   5:/usr/lib/avr/include/util/delay.h **** 
+   6:/usr/lib/avr/include/util/delay.h ****    Redistribution and use in source and binary forms, with or without
+   7:/usr/lib/avr/include/util/delay.h ****    modification, are permitted provided that the following conditions are met:
+   8:/usr/lib/avr/include/util/delay.h **** 
+   9:/usr/lib/avr/include/util/delay.h ****    * Redistributions of source code must retain the above copyright
+  10:/usr/lib/avr/include/util/delay.h ****      notice, this list of conditions and the following disclaimer.
+  11:/usr/lib/avr/include/util/delay.h **** 
+  12:/usr/lib/avr/include/util/delay.h ****    * Redistributions in binary form must reproduce the above copyright
+  13:/usr/lib/avr/include/util/delay.h ****      notice, this list of conditions and the following disclaimer in
+  14:/usr/lib/avr/include/util/delay.h ****      the documentation and/or other materials provided with the
+  15:/usr/lib/avr/include/util/delay.h ****      distribution.
+  16:/usr/lib/avr/include/util/delay.h **** 
+  17:/usr/lib/avr/include/util/delay.h ****    * Neither the name of the copyright holders nor the names of
+  18:/usr/lib/avr/include/util/delay.h ****      contributors may be used to endorse or promote products derived
+  19:/usr/lib/avr/include/util/delay.h ****      from this software without specific prior written permission.
+  20:/usr/lib/avr/include/util/delay.h **** 
+  21:/usr/lib/avr/include/util/delay.h ****   THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+  22:/usr/lib/avr/include/util/delay.h ****   AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+  23:/usr/lib/avr/include/util/delay.h ****   IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+  24:/usr/lib/avr/include/util/delay.h ****   ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+  25:/usr/lib/avr/include/util/delay.h ****   LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+  26:/usr/lib/avr/include/util/delay.h ****   CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+  27:/usr/lib/avr/include/util/delay.h ****   SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+  28:/usr/lib/avr/include/util/delay.h ****   INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+  29:/usr/lib/avr/include/util/delay.h ****   CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+  30:/usr/lib/avr/include/util/delay.h ****   ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE
+  31:/usr/lib/avr/include/util/delay.h ****   POSSIBILITY OF SUCH DAMAGE. */
+  32:/usr/lib/avr/include/util/delay.h **** 
+  33:/usr/lib/avr/include/util/delay.h **** /* $Id$ */
+  34:/usr/lib/avr/include/util/delay.h **** 
+  35:/usr/lib/avr/include/util/delay.h **** #ifndef _UTIL_DELAY_H_
+  36:/usr/lib/avr/include/util/delay.h **** #define _UTIL_DELAY_H_ 1
+  37:/usr/lib/avr/include/util/delay.h **** 
+  38:/usr/lib/avr/include/util/delay.h **** #ifndef __HAS_DELAY_CYCLES
+  39:/usr/lib/avr/include/util/delay.h **** #define __HAS_DELAY_CYCLES 1
+  40:/usr/lib/avr/include/util/delay.h **** #endif
+  41:/usr/lib/avr/include/util/delay.h **** 
+  42:/usr/lib/avr/include/util/delay.h **** #include <inttypes.h>
+  43:/usr/lib/avr/include/util/delay.h **** #include <util/delay_basic.h>
+  44:/usr/lib/avr/include/util/delay.h **** #include <math.h>
+  45:/usr/lib/avr/include/util/delay.h **** 
+  46:/usr/lib/avr/include/util/delay.h **** /** \file */
+  47:/usr/lib/avr/include/util/delay.h **** /** \defgroup util_delay <util/delay.h>: Convenience functions for busy-wait delay loops
+  48:/usr/lib/avr/include/util/delay.h ****     \code
+  49:/usr/lib/avr/include/util/delay.h ****     #define F_CPU 1000000UL  // 1 MHz
+  50:/usr/lib/avr/include/util/delay.h ****     //#define F_CPU 14.7456E6
+  51:/usr/lib/avr/include/util/delay.h ****     #include <util/delay.h>
+  52:/usr/lib/avr/include/util/delay.h ****     \endcode
+  53:/usr/lib/avr/include/util/delay.h **** 
+  54:/usr/lib/avr/include/util/delay.h ****     \note As an alternative method, it is possible to pass the
+  55:/usr/lib/avr/include/util/delay.h ****     F_CPU macro down to the compiler from the Makefile.
+  56:/usr/lib/avr/include/util/delay.h ****     Obviously, in that case, no \c \#define statement should be
+  57:/usr/lib/avr/include/util/delay.h ****     used.
+  58:/usr/lib/avr/include/util/delay.h **** 
+  59:/usr/lib/avr/include/util/delay.h ****     The functions in this header file are wrappers around the basic
+  60:/usr/lib/avr/include/util/delay.h ****     busy-wait functions from <util/delay_basic.h>.  They are meant as
+  61:/usr/lib/avr/include/util/delay.h ****     convenience functions where actual time values can be specified
+  62:/usr/lib/avr/include/util/delay.h ****     rather than a number of cycles to wait for.  The idea behind is
+  63:/usr/lib/avr/include/util/delay.h ****     that compile-time constant expressions will be eliminated by
+  64:/usr/lib/avr/include/util/delay.h ****     compiler optimization so floating-point expressions can be used
+  65:/usr/lib/avr/include/util/delay.h ****     to calculate the number of delay cycles needed based on the CPU
+  66:/usr/lib/avr/include/util/delay.h ****     frequency passed by the macro F_CPU.
+  67:/usr/lib/avr/include/util/delay.h **** 
+  68:/usr/lib/avr/include/util/delay.h ****     \note In order for these functions to work as intended, compiler
+  69:/usr/lib/avr/include/util/delay.h ****     optimizations <em>must</em> be enabled, and the delay time
+  70:/usr/lib/avr/include/util/delay.h ****     <em>must</em> be an expression that is a known constant at
+  71:/usr/lib/avr/include/util/delay.h ****     compile-time.  If these requirements are not met, the resulting
+  72:/usr/lib/avr/include/util/delay.h ****     delay will be much longer (and basically unpredictable), and
+  73:/usr/lib/avr/include/util/delay.h ****     applications that otherwise do not use floating-point calculations
+  74:/usr/lib/avr/include/util/delay.h ****     will experience severe code bloat by the floating-point library
+  75:/usr/lib/avr/include/util/delay.h ****     routines linked into the application.
+  76:/usr/lib/avr/include/util/delay.h **** 
+  77:/usr/lib/avr/include/util/delay.h ****     The functions available allow the specification of microsecond, and
+  78:/usr/lib/avr/include/util/delay.h ****     millisecond delays directly, using the application-supplied macro
+  79:/usr/lib/avr/include/util/delay.h ****     F_CPU as the CPU clock frequency (in Hertz).
+  80:/usr/lib/avr/include/util/delay.h **** 
+  81:/usr/lib/avr/include/util/delay.h **** */
+  82:/usr/lib/avr/include/util/delay.h **** 
+  83:/usr/lib/avr/include/util/delay.h **** #if !defined(__DOXYGEN__)
+  84:/usr/lib/avr/include/util/delay.h **** static inline void _delay_us(double __us) __attribute__((always_inline));
+  85:/usr/lib/avr/include/util/delay.h **** static inline void _delay_ms(double __ms) __attribute__((always_inline));
+  86:/usr/lib/avr/include/util/delay.h **** #endif
+  87:/usr/lib/avr/include/util/delay.h **** 
+  88:/usr/lib/avr/include/util/delay.h **** #ifndef F_CPU
+  89:/usr/lib/avr/include/util/delay.h **** /* prevent compiler error by supplying a default */
+  90:/usr/lib/avr/include/util/delay.h **** # warning "F_CPU not defined for <util/delay.h>"
+  91:/usr/lib/avr/include/util/delay.h **** # define F_CPU 1000000UL
+  92:/usr/lib/avr/include/util/delay.h **** #endif
+  93:/usr/lib/avr/include/util/delay.h **** 
+  94:/usr/lib/avr/include/util/delay.h **** #ifndef __OPTIMIZE__
+  95:/usr/lib/avr/include/util/delay.h **** # warning "Compiler optimizations disabled; functions from <util/delay.h> won't work as designed"
+  96:/usr/lib/avr/include/util/delay.h **** #endif
+  97:/usr/lib/avr/include/util/delay.h **** 
+  98:/usr/lib/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+  99:/usr/lib/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 100:/usr/lib/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 101:/usr/lib/avr/include/util/delay.h **** #  include <math.h>
+ 102:/usr/lib/avr/include/util/delay.h **** #endif
+ 103:/usr/lib/avr/include/util/delay.h **** 
+ 104:/usr/lib/avr/include/util/delay.h **** /**
+ 105:/usr/lib/avr/include/util/delay.h ****    \ingroup util_delay
+ 106:/usr/lib/avr/include/util/delay.h **** 
+ 107:/usr/lib/avr/include/util/delay.h ****    Perform a delay of \c __ms milliseconds, using _delay_loop_2().
+ 108:/usr/lib/avr/include/util/delay.h **** 
+ 109:/usr/lib/avr/include/util/delay.h ****    The macro F_CPU is supposed to be defined to a
+ 110:/usr/lib/avr/include/util/delay.h ****    constant defining the CPU clock frequency (in Hertz).
+ 111:/usr/lib/avr/include/util/delay.h **** 
+ 112:/usr/lib/avr/include/util/delay.h ****    The maximal possible delay is 262.14 ms / F_CPU in MHz.
+ 113:/usr/lib/avr/include/util/delay.h **** 
+ 114:/usr/lib/avr/include/util/delay.h ****    When the user request delay which exceed the maximum possible one,
+ 115:/usr/lib/avr/include/util/delay.h ****    _delay_ms() provides a decreased resolution functionality. In this
+ 116:/usr/lib/avr/include/util/delay.h ****    mode _delay_ms() will work with a resolution of 1/10 ms, providing
+ 117:/usr/lib/avr/include/util/delay.h ****    delays up to 6.5535 seconds (independent from CPU frequency).  The
+ 118:/usr/lib/avr/include/util/delay.h ****    user will not be informed about decreased resolution.
+ 119:/usr/lib/avr/include/util/delay.h **** 
+ 120:/usr/lib/avr/include/util/delay.h ****    If the avr-gcc toolchain has __builtin_avr_delay_cycles(unsigned long)
+ 121:/usr/lib/avr/include/util/delay.h ****    support, maximal possible delay is 4294967.295 ms/ F_CPU in MHz. For
+ 122:/usr/lib/avr/include/util/delay.h ****    values greater than the maximal possible delay, overflows results in
+ 123:/usr/lib/avr/include/util/delay.h ****    no delay i.e., 0ms.
+ 124:/usr/lib/avr/include/util/delay.h **** 
+ 125:/usr/lib/avr/include/util/delay.h ****    Conversion of __us into clock cycles may not always result in integer.
+ 126:/usr/lib/avr/include/util/delay.h ****    By default, the clock cycles rounded up to next integer. This ensures that
+ 127:/usr/lib/avr/include/util/delay.h ****    the user gets atleast __us microseconds of delay.
+ 128:/usr/lib/avr/include/util/delay.h **** 
+ 129:/usr/lib/avr/include/util/delay.h ****    Alternatively, user can define __DELAY_ROUND_DOWN__ and __DELAY_ROUND_CLOSEST__
+ 130:/usr/lib/avr/include/util/delay.h ****    to round down and round to closest integer.
+ 131:/usr/lib/avr/include/util/delay.h **** 
+ 132:/usr/lib/avr/include/util/delay.h ****    Note: The new implementation of _delay_ms(double __ms) with 
+ 133:/usr/lib/avr/include/util/delay.h ****     __builtin_avr_delay_cycles(unsigned long) support is not backward compatible. 
+ 134:/usr/lib/avr/include/util/delay.h ****    User can define __DELAY_BACKWARD_COMPATIBLE__ to get a backward compatible delay.
+ 135:/usr/lib/avr/include/util/delay.h ****    Also, the backward compatible
+ 136:/usr/lib/avr/include/util/delay.h ****    algorithm will be chosen if the code is compiled in a <em>freestanding
+ 137:/usr/lib/avr/include/util/delay.h ****    environment</em> (GCC option \c -ffreestanding), as the math functions
+ 138:/usr/lib/avr/include/util/delay.h ****    required for rounding are not available to the compiler then.
+ 139:/usr/lib/avr/include/util/delay.h **** 
+ 140:/usr/lib/avr/include/util/delay.h ****  */
+ 141:/usr/lib/avr/include/util/delay.h **** void
+ 142:/usr/lib/avr/include/util/delay.h **** _delay_ms(double __ms)
+ 143:/usr/lib/avr/include/util/delay.h **** {
+ 144:/usr/lib/avr/include/util/delay.h **** 	double __tmp ; 
+ 145:/usr/lib/avr/include/util/delay.h **** #if __HAS_DELAY_CYCLES && defined(__OPTIMIZE__) && \
+ 146:/usr/lib/avr/include/util/delay.h ****   !defined(__DELAY_BACKWARD_COMPATIBLE__) &&	   \
+ 147:/usr/lib/avr/include/util/delay.h ****   __STDC_HOSTED__
+ 148:/usr/lib/avr/include/util/delay.h **** 	uint32_t __ticks_dc;
+ 149:/usr/lib/avr/include/util/delay.h **** 	extern void __builtin_avr_delay_cycles(unsigned long);
+ 150:/usr/lib/avr/include/util/delay.h **** 	__tmp = ((F_CPU) / 1e3) * __ms;
+ 151:/usr/lib/avr/include/util/delay.h **** 
+ 152:/usr/lib/avr/include/util/delay.h **** 	#if defined(__DELAY_ROUND_DOWN__)
+ 153:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)fabs(__tmp);
+ 154:/usr/lib/avr/include/util/delay.h **** 
+ 155:/usr/lib/avr/include/util/delay.h **** 	#elif defined(__DELAY_ROUND_CLOSEST__)
+ 156:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(fabs(__tmp)+0.5);
+ 157:/usr/lib/avr/include/util/delay.h **** 
+ 158:/usr/lib/avr/include/util/delay.h **** 	#else
+ 159:/usr/lib/avr/include/util/delay.h **** 		//round up by default
+ 160:/usr/lib/avr/include/util/delay.h **** 		__ticks_dc = (uint32_t)(ceil(fabs(__tmp)));
+ 161:/usr/lib/avr/include/util/delay.h **** 	#endif
+ 162:/usr/lib/avr/include/util/delay.h **** 
+ 163:/usr/lib/avr/include/util/delay.h **** 	__builtin_avr_delay_cycles(__ticks_dc);
+ 547               	.LM59:
+ 548 0178 8FEC      		ldi r24,lo8(1999)
+ 549 017a 97E0      		ldi r25,hi8(1999)
+ 550 017c 0197      	1:	sbiw r24,1
+ 551 017e 01F4      		brne 1b
+ 552 0180 00C0      		rjmp .
+ 553 0182 0000      		nop
+ 554 0184 00C0      		rjmp .L18
+ 555               	.L7:
+ 556               	/* epilogue start */
+ 557               	.LBE32:
+ 558               	.LBE31:
+ 560               	.Ltext2:
+ 145:main.c        **** 				return;
+ 146:main.c        **** 			_delay_ms(1);
+ 147:main.c        **** 		}
+ 148:main.c        **** 	}
+ 149:main.c        **** }
+ 562               	.LM60:
+ 563 0186 DF91      		pop r29
+ 564 0188 CF91      		pop r28
+ 565 018a 1F91      		pop r17
+ 566 018c 0F91      		pop r16
+ 567 018e 0895      		ret
+ 581               	.Lscope3:
+ 583               		.stabd	78,0,0
+ 584               		.section	.text.startup,"ax",@progbits
+ 586               	.global	main
+ 588               	main:
+ 589               		.stabd	46,0,0
+ 150:main.c        **** 
+ 151:main.c        **** int main(void)
+ 152:main.c        **** {
+ 591               	.LM61:
+ 592               	.LFBB4:
+ 593               	/* prologue: function */
+ 594               	/* frame size = 0 */
+ 595               	/* stack size = 0 */
+ 596               	.L__stack_usage = 0
+ 153:main.c        **** 	DDRB = (1 << 3);
+ 598               	.LM62:
+ 599 0000 88E0      		ldi r24,lo8(8)
+ 600 0002 87BB      		out 0x17,r24
+ 154:main.c        **** 
+ 155:main.c        **** 	//enable second USI Port (PA0:2)
+ 156:main.c        **** 	USIPP=0x01;
+ 602               	.LM63:
+ 603 0004 81E0      		ldi r24,lo8(1)
+ 604 0006 81BB      		out 0x11,r24
+ 157:main.c        **** 
+ 158:main.c        **** 	i2c_init();
+ 606               	.LM64:
+ 607 0008 00D0      		rcall i2c_init
+ 159:main.c        **** 	sei();
+ 609               	.LM65:
+ 610               	/* #APP */
+ 611               	 ;  159 "main.c" 1
+ 612 000a 7894      		sei
+ 613               	 ;  0 "" 2
+ 160:main.c        **** 
+ 161:main.c        **** 	swirly();
+ 615               	.LM66:
+ 616               	/* #NOAPP */
+ 617 000c 00D0      		rcall swirly
+ 618               	.L43:
+ 162:main.c        **** 	goto inner;
+ 163:main.c        **** 
+ 164:main.c        **** 	while(1)
+ 165:main.c        **** 	{
+ 166:main.c        **** 		if (i2c_check_stop()) {
+ 167:main.c        **** inner:
+ 168:main.c        **** 			if (REG_CTRL & CTRL_RST)
+ 620               	.LM67:
+ 621 000e 8091 0000 		lds r24,i2c_reg
+ 622 0012 80FF      		sbrs r24,0
+ 623 0014 00C0      		rjmp .L45
+ 169:main.c        **** 				do_reset();
+ 625               	.LM68:
+ 626 0016 00D0      		rcall do_reset
+ 627 0018 00C0      		rjmp .L46
+ 628               	.L45:
+ 170:main.c        **** 			else if (REG_CTRL & CTRL_GLB)
+ 630               	.LM69:
+ 631 001a 8091 0000 		lds r24,i2c_reg
+ 632 001e 81FF      		sbrs r24,1
+ 633 0020 00C0      		rjmp .L47
+ 634               	.LBB39:
+ 635               	.LBB40:
+  25:main.c        **** }
+ 637               	.LM70:
+ 638 0022 64E1      		ldi r22,lo8(20)
+ 639 0024 70E0      		ldi r23,0
+ 640 0026 80E0      		ldi r24,lo8(i2c_reg+1)
+ 641 0028 90E0      		ldi r25,hi8(i2c_reg+1)
+ 642 002a 00D0      		rcall ws2812_setleds_constant
+ 643 002c 00C0      		rjmp .L46
+ 644               	.L47:
+ 645               	.LBE40:
+ 646               	.LBE39:
+ 647               	.LBB41:
+ 648               	.LBB42:
+  30:main.c        **** }
+ 650               	.LM71:
+ 651 002e 6CE3      		ldi r22,lo8(60)
+ 652 0030 70E0      		ldi r23,0
+ 653 0032 80E0      		ldi r24,lo8(led_data)
+ 654 0034 90E0      		ldi r25,hi8(led_data)
+ 655 0036 00D0      		rcall ws2812_sendarray
+ 656               	.L46:
+ 657               	.LBE42:
+ 658               	.LBE41:
+ 152:main.c        **** 	DDRB = (1 << 3);
+ 660               	.LM72:
+ 661 0038 00E0      		ldi r16,0
+ 662 003a 10E0      		ldi r17,0
+ 663 003c C6E0      		ldi r28,lo8(6)
+ 664 003e D0E0      		ldi r29,0
+ 665               	.L48:
+ 666 0040 7801      		movw r14,r16
+ 667 0042 8FEF      		ldi r24,-1
+ 668 0044 E81A      		sub r14,r24
+ 669 0046 F80A      		sbc r15,r24
+ 670               	.LBB43:
+ 671               	.LBB44:
+  57:main.c        **** 		led_data[3*i]=getValue(StartRegister+i*12+4);
+ 673               	.LM73:
+ 674 0048 CE01      		movw r24,r28
+ 675 004a 00D0      		rcall getValue
+ 676 004c F701      		movw r30,r14
+ 677 004e E050      		subi r30,lo8(-(led_data))
+ 678 0050 F040      		sbci r31,hi8(-(led_data))
+ 679 0052 8083      		st Z,r24
+  58:main.c        **** 		led_data[3*i+2]=getValue(StartRegister+i*12+8);
+ 681               	.LM74:
+ 682 0054 CE01      		movw r24,r28
+ 683 0056 0496      		adiw r24,4
+ 684 0058 00D0      		rcall getValue
+ 685 005a F801      		movw r30,r16
+ 686 005c E050      		subi r30,lo8(-(led_data))
+ 687 005e F040      		sbci r31,hi8(-(led_data))
+ 688 0060 8083      		st Z,r24
+ 689 0062 7801      		movw r14,r16
+ 690 0064 82E0      		ldi r24,2
+ 691 0066 E80E      		add r14,r24
+ 692 0068 F11C      		adc r15,__zero_reg__
+  59:main.c        **** 	}
+ 694               	.LM75:
+ 695 006a CE01      		movw r24,r28
+ 696 006c 0896      		adiw r24,8
+ 697 006e 00D0      		rcall getValue
+ 698 0070 F701      		movw r30,r14
+ 699 0072 E050      		subi r30,lo8(-(led_data))
+ 700 0074 F040      		sbci r31,hi8(-(led_data))
+ 701 0076 8083      		st Z,r24
+ 702 0078 2C96      		adiw r28,12
+ 703 007a 0D5F      		subi r16,-3
+ 704 007c 1F4F      		sbci r17,-1
+  54:main.c        **** 	{
+ 706               	.LM76:
+ 707 007e C63F      		cpi r28,-10
+ 708 0080 D105      		cpc r29,__zero_reg__
+ 709 0082 01F4      		brne .L48
+ 710               	.L44:
+ 711               	.LBE44:
+ 712               	.LBE43:
+ 166:main.c        **** inner:
+ 714               	.LM77:
+ 715 0084 00D0      		rcall i2c_check_stop
+ 716 0086 8823      		tst r24
+ 717 0088 01F0      		breq .L44
+ 718 008a 00C0      		rjmp .L43
+ 720               	.Lscope4:
+ 722               		.stabd	78,0,0
+ 723               	.global	init_color
+ 724               		.section	.progmem.data,"a",@progbits
+ 727               	init_color:
+ 728 0000 00        		.byte	0
+ 729 0001 00        		.byte	0
+ 730 0002 FF        		.byte	-1
+ 731               		.comm	led_data,60,1
+ 732               		.comm	i2c_reg,254,1
+ 736               		.text
+ 738               	.Letext0:
+ 739               		.ident	"GCC: (GNU) 4.9.2"
+ 740               	.global __do_clear_bss
+DEFINED SYMBOLS
+                            *ABS*:00000000 main.c
+     /tmp/ccV7gd96.s:2      *ABS*:0000003e __SP_H__
+     /tmp/ccV7gd96.s:3      *ABS*:0000003d __SP_L__
+     /tmp/ccV7gd96.s:4      *ABS*:0000003f __SREG__
+     /tmp/ccV7gd96.s:5      *ABS*:00000000 __tmp_reg__
+     /tmp/ccV7gd96.s:6      *ABS*:00000001 __zero_reg__
+     /tmp/ccV7gd96.s:118    .text:00000000 getValue
+                            *COM*:000000fe i2c_reg
+     /tmp/ccV7gd96.s:204    .text:0000006e do_reset
+     /tmp/ccV7gd96.s:727    .progmem.data:00000000 init_color
+     /tmp/ccV7gd96.s:310    .text:000000c2 swirly
+                            *COM*:0000003c led_data
+     /tmp/ccV7gd96.s:588    .text.startup:00000000 main
+
+UNDEFINED SYMBOLS
+__floatunsisf
+__divsf3
+__mulsf3
+__fixunssfsi
+ws2812_setleds_constant
+ws2812_sendarray
+i2c_check_stop
+i2c_init
+__do_clear_bss

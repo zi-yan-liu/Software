@@ -52,7 +52,7 @@ class InverseKinematicsNode(object):
 
         # Setup the publisher and subscriber
         #self.sub_car_cmd = rospy.Subscriber("~car_cmd", Twist2DStamped, self.car_cmd_callback)
-        self.sub_car_cmd = rospy.Subscriber("/megabot15/lane_controller_node/car_cmd", Twist2DStamped, self.car_cmd_callback)
+        self.sub_car_cmd = rospy.Subscriber("~car_cmd", Twist2DStamped, self.car_cmd_callback)
 
         self.sub_actuator_limits_received = rospy.Subscriber("~actuator_limits_received", BoolStamped, self.updateActuatorLimitsReceived, queue_size=1)
         self.pub_wheels_cmd = rospy.Publisher("~wheels_cmd", WheelsCmdStamped, queue_size=1)
