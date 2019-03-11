@@ -68,7 +68,7 @@ auto_localization_laptop: check-environment
 auto_localization_server: check-environment
 	bash -c "source environment.sh; source set_ros_master.sh; source set_vehicle_name.sh; roslaunch duckietown_demos tcp_server.launch param_file_name:=autolocal IP:=$(IP)"
 # auto localization with same master (master on the laptop)
-auto_localization_watchtower_same_master_%: check-environment
+auto_localization_watchtower_%: check-environment
 	bash -c "source environment.sh; source set_ros_master.sh $*; source set_vehicle_name.sh; roslaunch duckietown auto_localization_watchtower.launch veh:=$(vehicle_name) same_master:=true param_file_name:=autolocal"
 auto_localization_laptop_same_master: check-environment
 	bash -c "source environment.sh; source set_ros_master.sh; source set_vehicle_name.sh; roslaunch duckietown auto_localization_server.launch veh:=$(vehicle_name) same_master:=true param_file_name:=autolocal map:=$(map)"
