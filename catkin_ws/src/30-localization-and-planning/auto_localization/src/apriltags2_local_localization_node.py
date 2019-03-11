@@ -154,9 +154,13 @@ class AprilLocalLocalization(object):
                 for fixed_frame in self.fixed_tags_dict:
                     # print "RemapPoseArray size: " + str(len(remap_poses_array.poses))
                     fixed_tag = self.fixed_tags_dict[fixed_frame]
-                    if len(remap_poses_array.poses) == 3:
-                        self.pub_postPros.publish(remap_poses_array)
-                        remap_poses_array = RemapPoseArray()
+
+                    # Make sure matching the size of transmission of the TCP/IP server
+                    # See catkin_ws/00-infrastructure/duckietown/config/baseline/tcp_communication/autolocal.yaml BUFFER_SIZE
+                    # If we operate this under same ROS master, we don't need this
+                    #if len(remap_poses_array.poses) == 3:
+                    #    self.pub_postPros.publish(remap_poses_array)
+                    #    remap_poses_array = RemapPoseArray()
 
 
                     remap_pose = RemapPose()
