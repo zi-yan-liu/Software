@@ -51,10 +51,10 @@ class DaguWheelsDriver:
         self.updatePWM()
 
     def SetAngle(self, angle):                                                        #function to set the angle on the servo, RFMH_2019_03_05
-    	duty = angle / 18.0 + 2                                                 #TODO: check if this duty cycle from 2-12% does still hold for the final versino of the servo, RFMH_2019_03_05
+    	duty = (27.4+angle)*4/(2*27.4)+5.5                                                 #TODO: check if this duty cycle from 2-12% does still hold for the final versino of the servo, RFMH_2019_03_05
     	GPIO.output(33, True)                                                   #Set the GPIO12 to an active output, RFMH_2019_03_05
     	self.pwm.ChangeDutyCycle(duty)                                               #Set the actual PWM-signal, RFMH_2019_03_05
-    	sleep(0.5)                                                              #wait for the servo to set the angle hardware-wise, RFMH_2019_03_05 (maybe change to 1sec)
+    	sleep(0.2)                                                              #wait for the servo to set the angle hardware-wise, RFMH_2019_03_05 (maybe change to 1sec)
     	GPIO.output(33, False)
     	self.pwm.ChangeDutyCycle(0)                                                  #implmenting this preserves the servo from jittering, RFMH_2019_03_05
 

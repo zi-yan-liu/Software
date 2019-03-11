@@ -27,7 +27,7 @@ class WheelsDriverNode(object):
 
         # Setup subscribers
         self.control_constant = 1.0
-        self.sub_topic = rospy.Subscriber("~wheels_cmd", WheelsCmdStamped, self.cbWheelsCmd, queue_size=1)
+        self.sub_topic = rospy.Subscriber("/inverse_kinematics_node/wheels_cmd", WheelsCmdStamped, self.cbWheelsCmd, queue_size=1)
         self.sub_e_stop = rospy.Subscriber("~emergency_stop", BoolStamped, self.cbEStop, queue_size=1)
         #self.sub_rad_lim = rospy.Subscriber("~radius_limit", BoolStamped, self.cbRadLimit, queue_size=1)           #not needed TODO: get rid of publisher as well, not needed
 

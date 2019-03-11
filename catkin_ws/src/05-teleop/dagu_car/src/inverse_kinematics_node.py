@@ -214,17 +214,13 @@ class InverseKinematicsNode(object):
         else:
             gamma = math.atan(pow(pow((msg_car_cmd.v / msg_car_cmd.omega),2.0) - pow(self.cog_distance,2.0),-0.5) * self.axis_distance) * msg_car_cmd.omega / fabs(msg_car_cmd.omega)
 
-        rospy.loginfo(gamma)
-        ## conversion from motor rotation rate to duty cycle
-        # u_r = (gain_dc + trim_dc) (v + 0.5 * omega * b) / (r * k_r)
+        ## conversion from motor rotation rate to duty cycle for DC motor
         u_wheel = omega_wheel * k_wheel_inv                                     #omega_r changed to omega_wheel, u_r to u_wheel and k_r_inv to k_wheel_inv, RFMH_2019_02_25
-        # u_l = (gain_dc - trim_dc) (v - 0.5 * omega * b) / (r * k_l)
-        #u_l = omega_l * k_l_inv
 
         ## limiting output to limit, which is 1.0 for the duckiebot
         u_wheel_limited = max(min(u_wheel, self.limit), -self.limit)            #u_r_limited changed to "u_wheel_limited" and "u_r" changed to "u_wheel", RFMH_2019_02_25
         gamma_limited = max(min(gamma, self.angle_lim), -self.angle_lim)*(180/math.pi)
-	#u_l_limited = max(min(u_l, self.limit), -self.limit)
+	rospy.loginfo(gamma_limited)
 
         # Put the wheel commands in a message and publish
         msg_wheels_cmd = WheelsCmdStamped()
