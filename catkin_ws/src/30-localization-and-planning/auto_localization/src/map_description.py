@@ -438,6 +438,8 @@ class map_description(object):
             this_tile = pg.image.load(self.tile_image_file + "empty.png").convert()
         elif image == "4way":
             this_tile = pg.image.load(self.tile_image_file + "4way.png").convert()
+        elif image == "pond":
+            this_tile = pg.image.load(self.tile_image_file + "pond.png").convert()
         elif image[:-2] == "3way_left":
             this_tile = pg.image.load(self.tile_image_file + "3way.png").convert()
         elif image[:-2] == "straight":
