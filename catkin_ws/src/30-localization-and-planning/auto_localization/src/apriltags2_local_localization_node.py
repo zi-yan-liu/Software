@@ -164,15 +164,17 @@ class AprilLocalLocalization(object):
                     ########## Method 1 Use the pre-defined function gposf ##################
 
                     # This method is wrong,
-                    # mat_bot_tag = gposf.absolute_from_relative_position(mat_bot_cam, fixed_tag[1])
-                    # trans, rot = gposf.rot_trans_from_matrix(mat_bot_tag)
-                    # rot_euler = tf.transformations.euler_from_quaternion(rot)
-                    # rot_euler = [elem * 360 / (2 *3.14159) for elem in rot_euler]
-                    # rot_rnd   = ['%.1f' % elem for elem in rot_euler]
-                    # trans_rnd = ['%.3f' % elem for elem in trans]
-                    #
-                    # print "Translation: ", trans_rnd
-                    # print "Rotation: ", rot_rnd
+                    mat_bot_tag = gposf.absolute_from_relative_position(gposf.inverse_matrix(fixed_tag[1]), mat_bot_cam)
+                    trans, rot = gposf.rot_trans_from_matrix(mat_bot_tag)
+                    rot_euler = tf.transformations.euler_from_quaternion(rot)
+                    rot_euler = [elem * 360 / (2 *3.14159) for elem in rot_euler]
+                    rot_rnd   = ['%.1f' % elem for elem in rot]
+                    trans_rnd = ['%.3f' % elem for elem in trans]
+
+                    print "The tag: ", fixed_frame
+                    print "Translation: ", trans_rnd
+                    print "Rotation: ", rot_rnd
+                    print "--------------------------"
 
                     # get pose of moving tag in reference to the fixed tags
                     ##########################################################################

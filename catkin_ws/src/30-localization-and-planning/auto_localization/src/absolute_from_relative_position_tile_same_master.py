@@ -212,13 +212,17 @@ class global_localization(object):
         ## Doing 2D pose transformation (What you learn in hight school)
         ## Do rotation first
         bot_theta_after = bot_theta - rots
-        bot_x_after = bot_x*math.cos(-1*rots) + bot_y*math.sin(-1*rots)
-        bot_y_after = -1*bot_x*math.sin(-1*rots) + bot_y*math.cos(-1*rots)
+        bot_x_after_on_tile = bot_x*math.cos(-1*rots) + bot_y*math.sin(-1*rots)
+        bot_y_after_on_tile = -1*bot_x*math.sin(-1*rots) + bot_y*math.cos(-1*rots)
         ## Then do the transformation of point
         # to local tile orgin + trans
         # then to global origin TILE_SIZE*tile
-        bot_x_after = bot_x_after + trans[0]*0.01 + TILE_SIZE*tile[0]
-        bot_y_after = bot_y_after + trans[1]*0.01 + TILE_SIZE*tile[1]
+        bot_x_after = bot_x_after_on_tile + trans[0]*0.01 + TILE_SIZE*tile[0]
+        bot_y_after = bot_y_after_on_tile + trans[1]*0.01 + TILE_SIZE*tile[1]
+
+        #print "The local pose is", local_pose.posestamped.pose.position.x, local_pose.posestamped.pose.position.y, local_pose.posestamped.pose.position.z, \
+        #    local_pose.posestamped.pose.orientation.x, local_pose.posestamped.pose.orientation.y, local_pose.posestamped.pose.orientation.z, local_pose.posestamped.pose.orientation.w
+        #print "The computed global pose",bot_x_after, bot_y_after, bot_theta_after
 
         return bot_x_after, bot_y_after, bot_theta_after
 
