@@ -871,18 +871,18 @@
  740               	.global __do_clear_bss
 DEFINED SYMBOLS
                             *ABS*:00000000 main.c
-     /tmp/ccV7gd96.s:2      *ABS*:0000003e __SP_H__
-     /tmp/ccV7gd96.s:3      *ABS*:0000003d __SP_L__
-     /tmp/ccV7gd96.s:4      *ABS*:0000003f __SREG__
-     /tmp/ccV7gd96.s:5      *ABS*:00000000 __tmp_reg__
-     /tmp/ccV7gd96.s:6      *ABS*:00000001 __zero_reg__
-     /tmp/ccV7gd96.s:118    .text:00000000 getValue
+     /tmp/cck8Psgw.s:2      *ABS*:0000003e __SP_H__
+     /tmp/cck8Psgw.s:3      *ABS*:0000003d __SP_L__
+     /tmp/cck8Psgw.s:4      *ABS*:0000003f __SREG__
+     /tmp/cck8Psgw.s:5      *ABS*:00000000 __tmp_reg__
+     /tmp/cck8Psgw.s:6      *ABS*:00000001 __zero_reg__
+     /tmp/cck8Psgw.s:118    .text:00000000 getValue
                             *COM*:000000fe i2c_reg
-     /tmp/ccV7gd96.s:204    .text:0000006e do_reset
-     /tmp/ccV7gd96.s:727    .progmem.data:00000000 init_color
-     /tmp/ccV7gd96.s:310    .text:000000c2 swirly
+     /tmp/cck8Psgw.s:204    .text:0000006e do_reset
+     /tmp/cck8Psgw.s:727    .progmem.data:00000000 init_color
+     /tmp/cck8Psgw.s:310    .text:000000c2 swirly
                             *COM*:0000003c led_data
-     /tmp/ccV7gd96.s:588    .text.startup:00000000 main
+     /tmp/cck8Psgw.s:588    .text.startup:00000000 main
 
 UNDEFINED SYMBOLS
 __floatunsisf

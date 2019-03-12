@@ -679,20 +679,20 @@
  567               	.global __do_clear_bss
 DEFINED SYMBOLS
                             *ABS*:00000000 i2c_machine.c
-     /tmp/ccIc7Vgd.s:2      *ABS*:0000003e __SP_H__
-     /tmp/ccIc7Vgd.s:3      *ABS*:0000003d __SP_L__
-     /tmp/ccIc7Vgd.s:4      *ABS*:0000003f __SREG__
-     /tmp/ccIc7Vgd.s:5      *ABS*:00000000 __tmp_reg__
-     /tmp/ccIc7Vgd.s:6      *ABS*:00000001 __zero_reg__
-     /tmp/ccIc7Vgd.s:105    .text:00000000 __vector_7
-     /tmp/ccIc7Vgd.s:553    .bss:00000001 i2c_state
-     /tmp/ccIc7Vgd.s:148    .text:00000024 __vector_8
+     /tmp/ccO61SwM.s:2      *ABS*:0000003e __SP_H__
+     /tmp/ccO61SwM.s:3      *ABS*:0000003d __SP_L__
+     /tmp/ccO61SwM.s:4      *ABS*:0000003f __SREG__
+     /tmp/ccO61SwM.s:5      *ABS*:00000000 __tmp_reg__
+     /tmp/ccO61SwM.s:6      *ABS*:00000001 __zero_reg__
+     /tmp/ccO61SwM.s:105    .text:00000000 __vector_7
+     /tmp/ccO61SwM.s:553    .bss:00000001 i2c_state
+     /tmp/ccO61SwM.s:148    .text:00000024 __vector_8
                              .bss:00000003 post_ack.1505
-     /tmp/ccIc7Vgd.s:548    .bss:00000000 i2c_offset
-     /tmp/ccIc7Vgd.s:558    .bss:00000002 i2c_update
-     /tmp/ccIc7Vgd.s:394    .text:00000148 i2c_init
-     /tmp/ccIc7Vgd.s:433    .text:00000160 i2c_transaction_ongoing
-     /tmp/ccIc7Vgd.s:470    .text:00000176 i2c_check_stop
+     /tmp/ccO61SwM.s:548    .bss:00000000 i2c_offset
+     /tmp/ccO61SwM.s:558    .bss:00000002 i2c_update
+     /tmp/ccO61SwM.s:394    .text:00000148 i2c_init
+     /tmp/ccO61SwM.s:433    .text:00000160 i2c_transaction_ongoing
+     /tmp/ccO61SwM.s:470    .text:00000176 i2c_check_stop
 
 UNDEFINED SYMBOLS
 i2c_reg

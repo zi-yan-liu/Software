@@ -895,19 +895,19 @@
  598               		.ident	"GCC: (GNU) 4.9.2"
 DEFINED SYMBOLS
                             *ABS*:00000000 light_ws2812.c
-     /tmp/ccOefhWp.s:2      *ABS*:0000003e __SP_H__
-     /tmp/ccOefhWp.s:3      *ABS*:0000003d __SP_L__
-     /tmp/ccOefhWp.s:4      *ABS*:0000003f __SREG__
-     /tmp/ccOefhWp.s:5      *ABS*:00000000 __tmp_reg__
-     /tmp/ccOefhWp.s:6      *ABS*:00000001 __zero_reg__
-     /tmp/ccOefhWp.s:111    .text:00000000 ws2812_send_byte
-     /tmp/ccOefhWp.s:126    .text:00000004 loop7
-     /tmp/ccOefhWp.s:148    .text:00000018 ws2812_setleds_constant
-     /tmp/ccOefhWp.s:267    .text:0000008a ws2812_setleds_constant_rgbw
-     /tmp/ccOefhWp.s:387    .text:000000fc ws2812_sendarray_mask
-     /tmp/ccOefhWp.s:475    .text:0000014c ws2812_setleds_pin
-     /tmp/ccOefhWp.s:514    .text:00000162 ws2812_setleds
-     /tmp/ccOefhWp.s:538    .text:00000166 ws2812_setleds_rgbw
-     /tmp/ccOefhWp.s:577    .text:0000017c ws2812_sendarray
+     /tmp/ccg6MxSY.s:2      *ABS*:0000003e __SP_H__
+     /tmp/ccg6MxSY.s:3      *ABS*:0000003d __SP_L__
+     /tmp/ccg6MxSY.s:4      *ABS*:0000003f __SREG__
+     /tmp/ccg6MxSY.s:5      *ABS*:00000000 __tmp_reg__
+     /tmp/ccg6MxSY.s:6      *ABS*:00000001 __zero_reg__
+     /tmp/ccg6MxSY.s:111    .text:00000000 ws2812_send_byte
+     /tmp/ccg6MxSY.s:126    .text:00000004 loop7
+     /tmp/ccg6MxSY.s:148    .text:00000018 ws2812_setleds_constant
+     /tmp/ccg6MxSY.s:267    .text:0000008a ws2812_setleds_constant_rgbw
+     /tmp/ccg6MxSY.s:387    .text:000000fc ws2812_sendarray_mask
+     /tmp/ccg6MxSY.s:475    .text:0000014c ws2812_setleds_pin
+     /tmp/ccg6MxSY.s:514    .text:00000162 ws2812_setleds
+     /tmp/ccg6MxSY.s:538    .text:00000166 ws2812_setleds_rgbw
+     /tmp/ccg6MxSY.s:577    .text:0000017c ws2812_sendarray
 
 NO UNDEFINED SYMBOLS
