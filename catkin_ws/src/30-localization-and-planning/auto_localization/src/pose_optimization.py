@@ -38,112 +38,54 @@ from duckietown_msgs.msg import RemapPoseArray, RemapPose, GlobalPoseArray, Glob
 
 # A class for optimize and managing pose of a Duckiebot
 # One could in the future move this class to an independent file so that it could be used in other node.
-class BotOptimizedPose(object):
-    """"""
-    def __init__(self, bot_id):
 
-        ### Varaibles
-        self.bot_id = bot_id # The id of the Duckiebot
-        self.poses = dict() # Sort the poses according to their time stamp. Each index is a list of GlobalPose
-        self.camera_id = [] # The camera that sees the Duckiebot
-        self.reference_tag_id = [] # The reference tags that used to localizae the Duckiebot
-        self.current_time_stamp = 0 # Current time stamp
-        # The variable for output
-        self.optimized_pose = GlobalPose()
-        self.optimized_pose.bot_id = bot_id
+def get_optimized_pose(x, y, thetas):
 
-        self.time_stamp_width = 0.02 # unit: s. The width of time that seen as the same time stamp. Ex: current_time_stamp == current_time_stamp-time_stamp_width
+    poses_x = x
+    poses_y = y
+    poses_theta = thetas
 
-    def add_pose(self, pose):
-        # pose is a GlobalPose
+    optimized_pose_x = np.mean(poses_x)
+    optimized_pose_delta_x = np.sqrt(np.mean(poses_x - optimized_pose_x)**2) # Take RMSE of pose_x for delta_x
+    optimized_pose_y = np.mean(poses_y)
+    optimized_pose_delta_y = np.sqrt(np.mean(poses_y - optimized_pose_y)**2) # Take RMSE of pose_y for delta_y
+    # Need some special way to calculate mean for angles
+    # The range of input angle is +- pi
+    optimized_pose_theta = average_angle(poses_theta)
+    optimized_pose_delta_theta = rms_angle(poses_theta, optimized_pose_theta)
 
-        pose_time = pose.header.stamp.to_sec() # Unit: s
+    return [optimized_pose_x, optimized_pose_y, optimized_pose_theta, optimized_pose_delta_x, optimized_pose_delta_y, optimized_pose_delta_theta]
 
-        if pose_time < self.current_time_stamp - self.time_stamp_width:
-            # We don't use the time stamp which is too far away from current time
-            return
-        elif pose_time < self.current_time_stamp:
-            pass
-        else: # if pose_time > current_time_stamp:
-            self.current_time_stamp = pose_time
+def average_angle(thetas):
 
-        # Sort the pose according to its time stamp
-        if not str(pose_time) in self.poses:
-            self.poses[str(pose_time)] = []
-        self.poses[str(pose_time)].append(pose)
+    #Ref
+    # https://en.wikipedia.org/wiki/Mean_of_circular_quantities
+    # https://greek0.net/blog/2016/06/14/working_with_angles/
 
-        # Delete time stamps which are out of date
-        for time_stamp in self.poses.copy(): ## Can't change dictionary size while iterating. So use dict.copy().
-            if self.current_time_stamp - self.time_stamp_width > float(time_stamp):
-                del self.poses[time_stamp]
+    x = 0
+    y = 0
+    for theta in thetas:
+        x += math.cos(theta)
+        y += math.sin(theta)
 
-    def get_optimized_pose(self):
+    if x == 0:
+        return math.copysign(math.pi/2, y)
 
-        poses_x = []
-        poses_y = []
-        poses_theta = []
+    return math.atan2(y, x)
 
-        self.camera_id = []
-        self.reference_tag_id = []
+def rms_angle(thetas, mean):
 
-        for time_stamp in self.poses:
-            for a_pose in self.poses[time_stamp]:
-                poses_x.append(a_pose.pose.x)
-                poses_y.append(a_pose.pose.y)
-                poses_theta.append(a_pose.pose.theta)
-                # camera id's which saw this Duckiebot
-                if not a_pose.cam_id[0] in self.camera_id:
-                    self.camera_id.append(a_pose.cam_id[0])
-                # Reference tags which used by this detection
-                if not a_pose.reference_tag_id[0] in self.reference_tag_id:
-                    self.reference_tag_id.append(a_pose.reference_tag_id[0])
+    # It's the RMSE of angles
+    # sqrt(sum d(angle_i, mean)^2)
+    # d(angle1, angle2) = acos(cos(angle1-angle2))
 
-        self.optimized_pose.pose.x = np.mean(poses_x)
-        self.optimized_pose.delta_x = np.sqrt(np.mean(poses_x - self.optimized_pose.pose.x)**2) # Take RMSE of pose_x for delta_x
-        self.optimized_pose.pose.y = np.mean(poses_y)
-        self.optimized_pose.delta_y = np.sqrt(np.mean(poses_y - self.optimized_pose.pose.y)**2) # Take RMSE of pose_y for delta_y
-        # Need some special way to calculate mean for angles
-        # The range of input angle is +- pi
-        self.optimized_pose.pose.theta = self.average_angle(poses_theta)
-        self.optimized_pose.delta_theta = self.rms_angle(poses_theta, self.optimized_pose.pose.theta)
+    d_sq = []
 
-        self.optimized_pose.cam_id = self.camera_id
-        self.optimized_pose.reference_tag_id = self.reference_tag_id
+    for theta in thetas:
+        d = math.acos(math.cos(theta - mean))
+        d_sq.append(d**2)
 
-        self.optimized_pose.header.stamp = rospy.Time(int(self.current_time_stamp), self.current_time_stamp - int(self.current_time_stamp))
-
-        return copy.deepcopy(self.optimized_pose) # python always di reference. Thus we don't wanna self.optimized_pose to be modified.
-
-    def average_angle(self, thetas):
-
-        #Ref
-        # https://en.wikipedia.org/wiki/Mean_of_circular_quantities
-        # https://greek0.net/blog/2016/06/14/working_with_angles/
-
-        x = 0
-        y = 0
-        for theta in thetas:
-            x += math.cos(theta)
-            y += math.sin(theta)
-
-        if x == 0:
-            return math.copysign(math.pi/2, y)
-
-        return math.atan2(y, x)
-
-    def rms_angle(self, thetas, mean):
-
-        # It's the RMSE of angles
-        # sqrt(sum d(angle_i, mean)^2)
-        # d(angle1, angle2) = acos(cos(angle1-angle2))
-
-        d_sq = []
-
-        for theta in thetas:
-            d = math.acos(math.cos(theta - mean))
-            d_sq.append(d**2)
-
-        return np.sqrt(np.mean(d_sq))
+    return np.sqrt(np.mean(d_sq))
 
 class pose_optimization(object):
     """"""
@@ -160,25 +102,40 @@ class pose_optimization(object):
         #Add Publisher
         self.pub_opt_pos = rospy.Publisher("~bot_global_poses_optimized", GlobalPoseArray, queue_size=1)
 
-        ### Variable
-        # Store Duckiebots
-        self.bots = dict()
 
     def poses_callback(self, poses):
 
         output_poses = GlobalPoseArray()
 
+        bots = dict()
         for bot_pose in poses.poses:
-            if not str(bot_pose.bot_id) in self.bots:
-                self.bots[str(bot_pose.bot_id)] = BotOptimizedPose(bot_pose.bot_id)
-            self.bots[str(bot_pose.bot_id)].add_pose(bot_pose)
+            if bot_pose.bot_id not in bots.keys():
+                bots[bot_pose.bot_id] = dict()
+                bots[bot_pose.bot_id]["pose"] = GlobalPose()
+                bots[bot_pose.bot_id]["all_x"] = []
+                bots[bot_pose.bot_id]["all_y"] = []
+                bots[bot_pose.bot_id]["all_theta"] = []
+            bots[bot_pose.bot_id]["pose"].header = bot_pose.header
+            bots[bot_pose.bot_id]["pose"].bot_id = bot_pose.bot_id
+            for c_id in bot_pose.cam_id:
+                if c_id not in bots[bot_pose.bot_id]["pose"].cam_id:
+                    bots[bot_pose.bot_id]["pose"].cam_id.append(c_id)
+            for t_id in bot_pose.reference_tag_id:
+                if t_id not in bots[bot_pose.bot_id]["pose"].reference_tag_id:
+                    bots[bot_pose.bot_id]["pose"].reference_tag_id.append(t_id)
+            bots[bot_pose.bot_id]["all_x"].append(bot_pose.pose.x)
+            bots[bot_pose.bot_id]["all_y"].append(bot_pose.pose.y)
+            bots[bot_pose.bot_id]["all_theta"].append(bot_pose.pose.theta)
 
-        for bot in self.bots:
-            new_output = self.bots[bot].get_optimized_pose()
-            output_poses.poses.append(new_output)
-
-            new_data = [new_output.header.stamp, new_output.bot_id,  new_output.pose.x, new_output.pose.y, new_output.pose.theta, new_output.delta_x, new_output.delta_y, new_output.delta_theta, new_output.cam_id, new_output.reference_tag_id]
-            self.write_data_to_output_file(new_data)
+        for id in bots:
+            result = get_optimized_pose(bots[id]["all_x"], bots[id]["all_y"], bots[id]["all_theta"])
+            bots[id]["pose"].pose.x = result[0]
+            bots[id]["pose"].pose.y = result[1]
+            bots[id]["pose"].pose.theta = result[2]
+            bots[id]["pose"].delta_x = result[3]
+            bots[id]["pose"].delta_y = result[4]
+            bots[id]["pose"].delta_theta = result[5]
+            output_poses.poses.append(bots[id]["pose"])
 
         self.pub_opt_pos.publish(output_poses)
 
