@@ -163,6 +163,14 @@ target_link_libraries(${PROJECT_NAME}_node
   ${Eigen_LIBRARIES}
 )
 
+add_executable(anchorball_localization_node src/anchorball_localization.cpp)
+target_link_libraries(anchorball_localization_node
+  ${catkin_LIBRARIES}
+  ${ISAM_LIBRARIES}
+  ${CHOLMOD_LIBRARIES}
+  ${Eigen_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############

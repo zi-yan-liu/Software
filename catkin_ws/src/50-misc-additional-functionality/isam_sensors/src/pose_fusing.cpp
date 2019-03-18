@@ -16,6 +16,7 @@
 #include <boost/math/distributions/chi_squared.hpp>
 #include <boost/bind.hpp>
 #include <boost/function.hpp>
+#include <boost/algorithm/string.hpp>
 //#include <tf.h>
 //#include <Vector3.h>
 //#include <Quaternion.h>
@@ -30,7 +31,9 @@ using namespace Eigen;
 
 const int Pose2d::dim;
 const int Pose3d::dim;
-int VERBOSE = 0;
+
+int robot_name = 424;
+
 
 int opcount = 0;
 Slam *slam_ptr;
@@ -49,6 +52,7 @@ double length = 0.17;
 Noise noise3_3D = Information(100.*eye(6));
 Noise odom_noise3_3D = Information(100.*eye(6));
 Noise noise2_3D = Information(1. * eye(3));
+Noise noise2_rot_3D = Information(1. * eye(6));
 
 // Check if origin pose is set
 bool origin_set = false;
@@ -80,7 +84,8 @@ vector< vector<int> > watchtower_factors_timestamp;
 */
 std::vector<Pose3d_Node*> pose_nodes; //odometry nodes
 std::vector<Point3d_Node*> point_nodes; //measurement nodes
-std::vector<Point3d_Node*> watchtower_point_nodes; //watchtower measurement nodes
+//std::vector<Point3d_Node*> watchtower_point_nodes; //watchtower measurement nodes
+std::vector<Pose3d_Node*> watchtower_nodes;
 
 std::vector<int> landmarks_id; //the AprilTags ID
 std::vector<int> landmarks_timestamp; //tuple with landmarks_id
@@ -89,10 +94,13 @@ std::vector<int> watchtower_timestamp; //tuple with watchtower_id
 
 std::vector<Pose3d_Point3d_Factor*> landmark_factors;
 std::vector<std::vector<int> > landmarks_factors_timestamp;
-std::vector<Pose3d_Point3d_Factor*> watchtower_factors;
+//std::vector<Pose3d_Point3d_Factor*> watchtower_factors;
+std::vector<Pose3d_Pose3d_Factor*> watchtower_factors;
 std::vector<std::vector<int> > watchtower_factors_timestamp;
 
-vector<Pose2d> ground_truth_node;
+std::vector<Pose2d> robot_localization_node; //if we use watchtower to "localize" without isam and odometry.
+std::vector<Pose3d> watchtower_pose_node; //if we use watchtower to "localize" robots, the global pose of watchtowers are save here.
+std::vector<Pose2d> ground_truth_node;
 
 uint32_t shape = visualization_msgs::Marker::SPHERE;
 visualization_msgs::Marker *marker_ptr;
@@ -105,12 +113,33 @@ visualization_msgs::Marker *ground_truth_marker_ptr;
 ros::Publisher *ground_truth_marker_pub_ptr;
 int countL=0, countR=0;
 
+void save_watchtower(/* arguments */) {
+  string filename = "watchtower_pose.txt";
+
+  ofstream thefile;
+  thefile.open ("watchtower_pose.txt");
+
+  for (int it=0; it< watchtower_nodes.end()-watchtower_nodes.begin(); it++)
+  {
+    thefile << "watchtower" << watchtower_id[it] << ",";
+    thefile << watchtower_nodes[it]->value().x() << ",";
+    thefile << watchtower_nodes[it]->value().y() << ",";
+    thefile << watchtower_nodes[it]->value().z() << ",";
+    thefile << watchtower_nodes[it]->value().yaw() << ",";
+    thefile << watchtower_nodes[it]->value().pitch() << ",";
+    thefile << watchtower_nodes[it]->value().roll() << ",";
+    thefile << endl;
+  }
+  thefile.close();
+}
+
 void encoderLcallback(const std_msgs::Int64::ConstPtr& msg){
   encoderL = (msg->data);
   if (last_encoderL==0) last_encoderL = encoderL;
 }
 
 void encoderRcallback(const std_msgs::Int64::ConstPtr& msg){
+
   encoderR = (msg->data);
   if (last_encoderR==0) last_encoderR = encoderR;
 
@@ -194,6 +223,75 @@ void apriltagscallback(const apriltags2_ros::AprilTagDetectionArray::ConstPtr& m
   }
 }
 
+/*
+void watchtowercallback_Point(const apriltags2_ros::AprilTagDetectionArray::ConstPtr& msg, int& wt_id){
+
+  apriltags2_ros::AprilTagDetectionArray tag_detection_array = *msg;
+  int size = tag_detection_array.detections.end()-tag_detection_array.detections.begin();
+  //cout << "size: " << size << endl;
+  if (size > 0){
+    for(int it=0; it< tag_detection_array.detections.end()-tag_detection_array.detections.begin(); it++){
+      if(tag_detection_array.detections[it].id[0] != 424)
+        return; //We only care the tag for the robot
+
+        apriltags2_ros::AprilTagDetection detection = tag_detection_array.detections[it];
+        //cout << "apriltag detected id: " << detection.id << endl;
+        int index = find (watchtower_id.begin(), watchtower_id.end(), wt_id) - watchtower_id.begin();
+
+        tf::Vector3 point(detection.pose.pose.pose.position.x, detection.pose.pose.pose.position.y, detection.pose.pose.pose.position.z);
+        tf::Quaternion orie(detection.pose.pose.pose.orientation.x, detection.pose.pose.pose.orientation.y, detection.pose.pose.pose.orientation.z, detection.pose.pose.pose.orientation.w);
+        tf::Transform tf_wt_bot(orie, point);
+
+        double pose_x = tf_wt_bot.inverse().getOrigin().getX();
+        double pose_y = tf_wt_bot.inverse().getOrigin().getY();
+        double pose_z = tf_wt_bot.inverse().getOrigin().getZ();
+        cout << "Origin: " << detection.pose.pose.pose.position.x << detection.pose.pose.pose.position.y << detection.pose.pose.pose.position.z << endl;
+        cout << "Inverse: " << pose_x << pose_y << pose_z << endl;
+
+        // Use the transformation from bot to the watchtower as a measurement
+        if (find (watchtower_id.begin(), watchtower_id.end(), wt_id) == watchtower_id.end()){
+          cout << "if first look" << endl;
+          //cout << "new landmark " << detection.id << endl;
+          cout << "watchtower_id.push_back(wt_id): " << wt_id << endl;
+          watchtower_id.push_back(wt_id);
+          cout << "Point3d_Node* new_point_node = new Point3d_Node();" << endl;
+          Point3d_Node* new_point_node = new Point3d_Node();
+          cout << "watchtower_point_nodes.push_back(new_point_node);" << endl;
+          watchtower_point_nodes.push_back(new_point_node);
+          cout << "watchtower_timestamp.push_back(detection.pose.header.stamp.sec);" << endl;
+          watchtower_timestamp.push_back(detection.pose.header.stamp.sec);
+          cout << "slam_ptr->add_node(new_point_node);" << endl;
+          slam_ptr->add_node(new_point_node);
+
+          //cout << "apriltag: " << detection.id << " " << -detection.pose.pose.position.x << " " << -detection.pose.pose.position.y << endl;
+          cout << "Point3d measurement" << endl;
+          Point3d measurement(pose_x, pose_y, pose_z);
+          cout << "Pose3d_Point3d_Factor* constraint" << endl;
+          Pose3d_Point3d_Factor* constraint = new Pose3d_Point3d_Factor(pose_nodes[last_odom_index], new_point_node, measurement, noise2_3D);
+          cout << "slam_ptr->add_factor(constraint);" << endl;
+          slam_ptr->add_factor(constraint);
+          //landmark_factors.push_back(constraint);
+        }
+        else{
+          cout << "if second look" << endl;
+          //cout << "apriltag: " << landmarks_id[index] << " " << -detection.pose.pose.position.x << " " << -detection.pose.pose.position.y << endl;
+          //Point2d measurement(-detection.pose.pose.pose.position.x, -detection.pose.pose.pose.position.y);
+          Point3d measurement(pose_x, pose_y, pose_z);
+          Pose3d_Point3d_Factor* constraint = new Pose3d_Point3d_Factor(pose_nodes[last_odom_index], watchtower_point_nodes[index], measurement, noise2_3D);
+
+          slam_ptr->add_factor(constraint);
+
+          watchtower_factors.push_back(constraint);
+          vector<int> timestamp;
+          timestamp.push_back(watchtower_timestamp[index]);
+          timestamp.push_back(detection.pose.header.stamp.sec);
+          watchtower_factors_timestamp.push_back(timestamp);
+        }
+    }
+  }
+}
+*/
+
 void watchtowercallback(const apriltags2_ros::AprilTagDetectionArray::ConstPtr& msg, int& wt_id){
 
   apriltags2_ros::AprilTagDetectionArray tag_detection_array = *msg;
@@ -208,28 +306,40 @@ void watchtowercallback(const apriltags2_ros::AprilTagDetectionArray::ConstPtr& 
         //cout << "apriltag detected id: " << detection.id << endl;
         int index = find (watchtower_id.begin(), watchtower_id.end(), wt_id) - watchtower_id.begin();
 
-        cout << detection.pose.pose.pose.position.x << detection.pose.pose.pose.position.y << detection.pose.pose.pose.position.z << endl;
+        tf::Vector3 point(detection.pose.pose.pose.position.x, detection.pose.pose.pose.position.y, detection.pose.pose.pose.position.z);
+        tf::Quaternion orie(detection.pose.pose.pose.orientation.x, detection.pose.pose.pose.orientation.y, detection.pose.pose.pose.orientation.z, detection.pose.pose.pose.orientation.w);
+        tf::Transform tf_wt_bot(orie, point);
+
+        double pose_x = tf_wt_bot.inverse().getOrigin().getX();
+        double pose_y = tf_wt_bot.inverse().getOrigin().getY();
+        double pose_z = tf_wt_bot.inverse().getOrigin().getZ();
+        double roll, pitch, yaw;
+        tf::Matrix3x3 m(tf_wt_bot.inverse().getRotation());
+        m.getRPY(roll, pitch, yaw);
+
+        cout << "Origin: " << detection.pose.pose.pose.position.x << detection.pose.pose.pose.position.y << detection.pose.pose.pose.position.z << endl;
+        cout << "Inverse: " << pose_x << pose_y << pose_z << endl;
 
         // Use the transformation from bot to the watchtower as a measurement
         if (find (watchtower_id.begin(), watchtower_id.end(), wt_id) == watchtower_id.end()){
           cout << "if first look" << endl;
           //cout << "new landmark " << detection.id << endl;
-          cout << "watchtower_id.push_back(wt_id)" << endl;
+          cout << "watchtower_id.push_back(wt_id): " << wt_id << endl;
           watchtower_id.push_back(wt_id);
-          cout << "Point3d_Node* new_point_node = new Point3d_Node();" << endl;
-          Point3d_Node* new_point_node = new Point3d_Node();
-          cout << "watchtower_point_nodes.push_back(new_point_node);" << endl;
-          watchtower_point_nodes.push_back(new_point_node);
+          cout << "Pose3d_Node* new_pose_node = new Pose3d_Node();" << endl;
+          Pose3d_Node* new_pose_node = new Pose3d_Node();
+          cout << "watchtower_nodes.push_back(new_pose_node);" << endl;
+          watchtower_nodes.push_back(new_pose_node);
           cout << "watchtower_timestamp.push_back(detection.pose.header.stamp.sec);" << endl;
           watchtower_timestamp.push_back(detection.pose.header.stamp.sec);
-          cout << "slam_ptr->add_node(new_point_node);" << endl;
-          slam_ptr->add_node(new_point_node);
+          cout << "slam_ptr->add_node(new_pose_node);" << endl;
+          slam_ptr->add_node(new_pose_node);
 
           //cout << "apriltag: " << detection.id << " " << -detection.pose.pose.position.x << " " << -detection.pose.pose.position.y << endl;
-          cout << "Point3d measurement" << endl;
-          Point3d measurement(detection.pose.pose.pose.position.x, detection.pose.pose.pose.position.y, detection.pose.pose.pose.position.z);
-          cout << "Pose3d_Point3d_Factor* constraint" << endl;
-          Pose3d_Point3d_Factor* constraint = new Pose3d_Point3d_Factor(pose_nodes[last_odom_index], new_point_node, measurement, noise2_3D);
+          cout << "Pose3d measurement" << endl;
+          Pose3d measurement(pose_x, pose_y, pose_z, yaw, pitch, roll);
+          cout << "Pose3d_Pose3d_Factor* constraint" << endl;
+          Pose3d_Pose3d_Factor* constraint = new Pose3d_Pose3d_Factor(pose_nodes[last_odom_index], watchtower_nodes[index], measurement, noise2_rot_3D);
           cout << "slam_ptr->add_factor(constraint);" << endl;
           slam_ptr->add_factor(constraint);
           //landmark_factors.push_back(constraint);
@@ -238,8 +348,8 @@ void watchtowercallback(const apriltags2_ros::AprilTagDetectionArray::ConstPtr& 
           cout << "if second look" << endl;
           //cout << "apriltag: " << landmarks_id[index] << " " << -detection.pose.pose.position.x << " " << -detection.pose.pose.position.y << endl;
           //Point2d measurement(-detection.pose.pose.pose.position.x, -detection.pose.pose.pose.position.y);
-          Point3d measurement(detection.pose.pose.pose.position.x, detection.pose.pose.pose.position.y, detection.pose.pose.pose.position.z);
-          Pose3d_Point3d_Factor* constraint = new Pose3d_Point3d_Factor(pose_nodes[last_odom_index], watchtower_point_nodes[index], measurement, noise2_3D);
+          Pose3d measurement(pose_x, pose_y, pose_z, yaw, pitch, roll);
+          Pose3d_Pose3d_Factor* constraint = new Pose3d_Pose3d_Factor(pose_nodes[last_odom_index], watchtower_nodes[index], measurement, noise2_rot_3D);
 
           slam_ptr->add_factor(constraint);
 
@@ -253,9 +363,9 @@ void watchtowercallback(const apriltags2_ros::AprilTagDetectionArray::ConstPtr& 
   }
 }
 
-void gounrd_truth_callback(const duckietown_msgs::GlobalPoseArray::ConstPtr& msg){
+void ground_truth_callback(const duckietown_msgs::GlobalPoseArray::ConstPtr& msg){
 
-  cout << "in gounrd_truth_callback" << endl;
+  cout << "in ground_truth_callback" << endl;
 
   // extract pose
   duckietown_msgs::GlobalPoseArray pose_array = *msg;
@@ -269,7 +379,7 @@ void gounrd_truth_callback(const duckietown_msgs::GlobalPoseArray::ConstPtr& msg
     slam_ptr->add_node(new_pose_node);
     Pose3d origin(pose_x, pose_y, 0, pose_yaw, 0, 0);
     pose_nodes.push_back(new_pose_node);
-    Pose3d_Factor* prior = new Pose3d_Factor(pose_nodes[0], origin, noise3_3D);
+    Pose3d_Factor* prior = new Pose3d_Factor(pose_nodes[0], origin, noise2_rot_3D);
     slam_ptr->add_factor(prior);
 
     origin_set = true;
@@ -279,18 +389,7 @@ void gounrd_truth_callback(const duckietown_msgs::GlobalPoseArray::ConstPtr& msg
   ground_truth_node.push_back(new_ground_truth);
 }
 
-double chi2(int dof){
-    if(dof>0)
-      return boost::math::quantile(boost::math::chi_squared(dof),0.95)/2500; //0.98/700
-    else
-    {
-      std::cerr<<" chi2 error " << dof <<std::endl;
-      return 0;
-    }
-}
-
 void process(){
-cout << "in process" << endl;
   if(opcount >= 30){
     //optimize slam
     ros::Time optimize_start_time = ros::Time::now();
@@ -298,7 +397,9 @@ cout << "in process" << endl;
     cout << "batch_optimization" << endl;
     slam_ptr->batch_optimization();
     ros::Time optimize_end_time = ros::Time::now();
-    //slam_ptr->save("output.graph");
+    slam_ptr->save("output.graph");
+
+    save_watchtower();
     //cout << "optimizing duration: " << optimize_end_time-optimize_start_time << endl;
     opcount = 0;
   }
@@ -328,7 +429,7 @@ cout << "in process" << endl;
     // Set the color -- be sure to set alpha to something non-zero!
     marker_ptr->color.r = 1.0f;
     marker_ptr->color.g = 0.0f;
-    marker_ptr->color.b = 0.0f;
+    marker_ptr->color.b = 1.0f;
     marker_ptr->color.a = 1.0;
 
     marker_ptr->lifetime = ros::Duration();
@@ -373,14 +474,14 @@ cout << "in process" << endl;
     //cout << pose_nodes[it]->value().y() << endl;
   }
 
-  for (it=0; it< watchtower_point_nodes.end()-watchtower_point_nodes.begin(); it++)
+  for (it=0; it< watchtower_nodes.end()-watchtower_nodes.begin(); it++)
   {
 
     watchtower_marker_ptr->id = it;
     watchtower_marker_ptr->action = visualization_msgs::Marker::ADD;
-    watchtower_marker_ptr->pose.position.x = watchtower_point_nodes[it]->value().x();
-    watchtower_marker_ptr->pose.position.y = watchtower_point_nodes[it]->value().y();
-    watchtower_marker_ptr->pose.position.z = watchtower_point_nodes[it]->value().z();
+    watchtower_marker_ptr->pose.position.x = watchtower_nodes[it]->value().x();
+    watchtower_marker_ptr->pose.position.y = watchtower_nodes[it]->value().y();
+    watchtower_marker_ptr->pose.position.z = watchtower_nodes[it]->value().z();
     watchtower_marker_ptr->pose.orientation.x = 0.0;
     watchtower_marker_ptr->pose.orientation.y = 0.0;
     watchtower_marker_ptr->pose.orientation.z = 0.0;
@@ -392,9 +493,9 @@ cout << "in process" << endl;
     watchtower_marker_ptr->scale.z = 0.05;
 
     // Set the color -- be sure to set alpha to something non-zero!
-    watchtower_marker_ptr->color.r = 0.0f;
+    watchtower_marker_ptr->color.r = 1.0f;
     watchtower_marker_ptr->color.g = 1.0f;
-    watchtower_marker_ptr->color.b = 1.0f;
+    watchtower_marker_ptr->color.b = 0.0f;
     watchtower_marker_ptr->color.a = 1.0;
 
     watchtower_marker_ptr->lifetime = ros::Duration();
@@ -424,7 +525,7 @@ cout << "in process" << endl;
 
     // Set the color -- be sure to set alpha to something non-zero!
     ground_truth_marker_ptr->color.r = 0.0f;
-    ground_truth_marker_ptr->color.g = 0.0f;
+    ground_truth_marker_ptr->color.g = 1.0f;
     ground_truth_marker_ptr->color.b = 1.0f;
     ground_truth_marker_ptr->color.a = 1.0;
 
@@ -438,7 +539,6 @@ cout << "in process" << endl;
   ros::Time draw_end_time = ros::Time::now();
   //cout << "drawing duration: " << draw_end_time-draw_start_time << endl;
 }
-
 
 void spinOnce(){
    process();
@@ -455,7 +555,8 @@ void spin(){
 }
 
 int main(int argc, char **argv){
-  VERBOSE = atoi(argv[2]);
+  if(atoi(argv[1]) > 0)
+    robot_name = atoi(argv[2]);
   Slam slam;
   slam_ptr = &slam;
 
@@ -473,7 +574,7 @@ int main(int argc, char **argv){
   tf_atlas2tagB.mult(tf_tagB2watchtower, tf_watchtower2tagA);
   tf_atlas2tagB.mult(tf_atlas2tagB, tf_tagA2atlas);
   //tf_atlas2tagB = tf_atlas2tagB.inverse();
-  cout << tf_atlas2tagB.getOrigin().getX() << " " << tf_atlas2tagB.getOrigin().getY() << " " <<tf_atlas2tagB.getOrigin().getZ();
+  cout << tf_atlas2tagB.getOrigin().getX() << " " << tf_atlas2tagB.getOrigin().getY() << " " <<tf_atlas2tagB.getOrigin().getZ() <<endl;
 
 
   //cout << last_odom_index << " " << current_index << " " << int(pose_nodes.end()-pose_nodes.begin()) << endl;
@@ -511,7 +612,7 @@ int main(int argc, char **argv){
   ground_truth_marker.ns = "ground_truth";
   ground_truth_marker.type = shape;
 
-  ros::Subscriber watchtowerSub = n.subscribe("/erickietop/pose_optimization/bot_global_poses_optimized", 10, gounrd_truth_callback);
+  ros::Subscriber watchtowerSub = n.subscribe("/erickietop/pose_optimization/bot_global_poses_optimized", 10, ground_truth_callback);
   ros::Subscriber encoderLsub = n.subscribe("/encoder_L", 1000, encoderLcallback);
   ros::Subscriber encoderRsub = n.subscribe("/encoder_R", 1000, encoderRcallback);
   //ros::Subscriber detectorLsub = n.subscribe("/atlas/tag_detections", 10, apriltagscallback);
@@ -523,14 +624,14 @@ int main(int argc, char **argv){
   ros::Subscriber watchtower29 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower29/tag_detections", 10, boost::bind(watchtowercallback, _1, 29));
   //ros::Subscriber watchtower32 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower32/tag_detections", 10, boost::bind(watchtowercallback, _1, 32));
   ros::Subscriber watchtower33 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower33/tag_detections", 10, boost::bind(watchtowercallback, _1, 33));
-  //ros::Subscriber watchtower35 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower35/tag_detections", 10, boost::bind(watchtowercallback, _1, 35));
-  //ros::Subscriber watchtower36 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower36/tag_detections", 10, boost::bind(watchtowercallback, _1, 36));
-  //ros::Subscriber watchtower37 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower37/tag_detections", 10, boost::bind(watchtowercallback, _1, 37));
-  //ros::Subscriber watchtower38 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower38/tag_detections", 10, boost::bind(watchtowercallback, _1, 38));
-  //ros::Subscriber watchtower40 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower40/tag_detections", 10, boost::bind(watchtowercallback, _1, 40));
+  ros::Subscriber watchtower35 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower35/tag_detections", 10, boost::bind(watchtowercallback, _1, 35));
+  ros::Subscriber watchtower36 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower36/tag_detections", 10, boost::bind(watchtowercallback, _1, 36));
+  ros::Subscriber watchtower37 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower37/tag_detections", 10, boost::bind(watchtowercallback, _1, 37));
+  ros::Subscriber watchtower38 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower38/tag_detections", 10, boost::bind(watchtowercallback, _1, 38));
+  ros::Subscriber watchtower40 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower40/tag_detections", 10, boost::bind(watchtowercallback, _1, 40));
   ros::Subscriber watchtower42 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower42/tag_detections", 10, boost::bind(watchtowercallback, _1, 42));
-  //ros::Subscriber watchtower43 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower43/tag_detections", 10, boost::bind(watchtowercallback, _1, 43));
-  //ros::Subscriber watchtower47 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower47/tag_detections", 10, boost::bind(watchtowercallback, _1, 47));
+  ros::Subscriber watchtower43 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower43/tag_detections", 10, boost::bind(watchtowercallback, _1, 43));
+  ros::Subscriber watchtower47 = n.subscribe<apriltags2_ros::AprilTagDetectionArray> ("/watchtower47/tag_detections", 10, boost::bind(watchtowercallback, _1, 47));
 
   ros::Publisher marker_pub = n.advertise<visualization_msgs::Marker>("visualization_odom_marker", 1);
   marker_pub_ptr = &marker_pub;
