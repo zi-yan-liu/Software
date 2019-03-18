@@ -6,7 +6,7 @@
     <arg name="output" default="test" doc="Specify the output name of the statistics file"/>
 
     <group ns="$(arg veh)">
-        <node name="$(arg node_name)" pkg="$(arg pkg_name)" type="$(arg node_name).py"
+        <node name="$(arg node_name)" pkg="$(arg pkg_name)" type="pose_optimization_hcc.py"
               output="screen">
               <param name="~output_file" value="$(arg output)" type="str"/>
         </node>

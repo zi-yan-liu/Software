@@ -37,6 +37,7 @@ import copy
 from duckietown_msgs.msg import RemapPoseArray, RemapPose, GlobalPoseArray, GlobalPose
 
 duckiebots = [[426, 429, 403, 437], [427, 436, 439, 431]]
+obstacles = [432, 433]
 length = 0.1
 
 # A class for optimize and managing pose of a Duckiebot
@@ -111,6 +112,7 @@ class pose_optimization(object):
         output_poses = GlobalPoseArray()
 
         bots = dict()
+        obst = dict()
         for bot_pose in poses.poses:
             for duckiebot in duckiebots:
                 if bot_pose.bot_id in duckiebot:
@@ -139,6 +141,23 @@ class pose_optimization(object):
                     bots[duckiebot[0]]["all_x"].append(pose_x)
                     bots[duckiebot[0]]["all_y"].append(pose_y)
                     bots[duckiebot[0]]["all_theta"].append(bot_pose.pose.theta)
+                elif bot_pose.bot_id in obstacles:
+                    if bot_pose.bot_id not in obst.keys():
+                        obst[duckiebot[0]] = dict()
+                        obst[duckiebot[0]]["pose"] = GlobalPose()
+                        obst[duckiebot[0]]["all_x"] = []
+                        obst[duckiebot[0]]["all_y"] = []
+                        obst[duckiebot[0]]["all_theta"] = []
+                    obst[duckiebot[0]]["pose"].header = bot_pose.header
+                    obst[duckiebot[0]]["pose"].bot_id = bot_pose.bot_id
+                    obst[duckiebot[0]]["pose"].cam_id.extend(bot_pose.cam_id)
+                    obst[duckiebot[0]]["pose"].reference_tag_id.extend(bot_pose.reference_tag_id)
+
+                    pose_x = bot_pose.pose.x
+                    pose_y = bot_pose.pose.y
+                    obst[duckiebot[0]]["all_x"].append(pose_x)
+                    obst[duckiebot[0]]["all_y"].append(pose_y)
+                    obst[duckiebot[0]]["all_theta"].append(bot_pose.pose.theta)
 
         for id in bots:
             result = get_optimized_pose(bots[id]["all_x"], bots[id]["all_y"], bots[id]["all_theta"])
@@ -149,6 +168,15 @@ class pose_optimization(object):
             bots[id]["pose"].delta_y = result[4]
             bots[id]["pose"].delta_theta = result[5]
             output_poses.poses.append(bots[id]["pose"])
+        for id in obst:
+            result = get_optimized_pose(obst[id]["all_x"], obst[id]["all_y"], obst[id]["all_theta"])
+            obst[id]["pose"].pose.x = result[0]
+            obst[id]["pose"].pose.y = result[1]
+            obst[id]["pose"].pose.theta = result[2]
+            obst[id]["pose"].delta_x = result[3]
+            obst[id]["pose"].delta_y = result[4]
+            obst[id]["pose"].delta_theta = result[5]
+            output_poses.poses.append(obst[id]["pose"])
 
         self.pub_opt_pos.publish(output_poses)
 

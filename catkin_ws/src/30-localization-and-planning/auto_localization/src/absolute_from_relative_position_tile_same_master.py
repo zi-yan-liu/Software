@@ -47,7 +47,7 @@ import math
 ##from operator import itemgetter
 
 #add local poses Message (Eric add on 0626)
-from duckietown_msgs.msg import RemapPoseArray, RemapPose, GlobalPoseArray, GlobalPose
+from duckietown_msgs.msg import RemapPoseArray, RemapPose, GlobalPoseArray, GlobalPose, Pose2DStamped
 
 
 # import message format of the fixed tags
@@ -78,6 +78,7 @@ class global_localization(object):
 
         #Add Publisher
         self.pub_abs_pos = rospy.Publisher("~bot_global_poses", GlobalPoseArray, queue_size=1)
+        self.pub_abs_pos_for_car = rospy.Publisher("~bot_global_poses_for_car", Pose2DStamped, queue_size=1)
 
 ### ------------------ LOCAL POSES CALLBACK FUNCTION --------------------#####
 # Listens to Local Poses
@@ -133,6 +134,13 @@ class global_localization(object):
 
         # before publishing the global_poses merge the redundant poses
         self.pub_abs_pos.publish(global_poses) # Publish the global poses
+
+        pose_for_car = Pose2DStamped()
+        pose_for_car.header = global_poses.poses[0].header
+        pose_for_car.x = global_poses.poses[0].pose.x
+        pose_for_car.y = global_poses.poses[0].pose.y
+        pose_for_car.theta = global_poses.poses[0].pose.theta
+        self.pub_abs_pos_for_car.publish(pose_for_car)
 
 
 ### -------------- FIND GLOBAL POSE FROM MULITPLE LOCAL POSES------------#####
