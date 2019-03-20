@@ -98,8 +98,6 @@ std::vector<std::vector<int> > landmarks_factors_timestamp;
 std::vector<Pose3d_Pose3d_Factor*> watchtower_factors;
 std::vector<std::vector<int> > watchtower_factors_timestamp;
 
-std::vector<Pose2d> robot_localization_node; //if we use watchtower to "localize" without isam and odometry.
-std::vector<Pose3d> watchtower_pose_node; //if we use watchtower to "localize" robots, the global pose of watchtowers are save here.
 std::vector<Pose2d> ground_truth_node;
 
 uint32_t shape = visualization_msgs::Marker::SPHERE;
@@ -300,7 +298,7 @@ void watchtowercallback(const apriltags2_ros::AprilTagDetectionArray::ConstPtr& 
   if (size > 0){
     for(int it=0; it< tag_detection_array.detections.end()-tag_detection_array.detections.begin(); it++){
       if(tag_detection_array.detections[it].id[0] != 424)
-        return; //We only care the tag for the robot
+        continue; //We only care the tag for the robot
 
         apriltags2_ros::AprilTagDetection detection = tag_detection_array.detections[it];
         //cout << "apriltag detected id: " << detection.id << endl;
@@ -556,7 +554,7 @@ void spin(){
 
 int main(int argc, char **argv){
   if(atoi(argv[1]) > 0)
-    robot_name = atoi(argv[2]);
+    robot_name = atoi(argv[1]);
   Slam slam;
   slam_ptr = &slam;
 

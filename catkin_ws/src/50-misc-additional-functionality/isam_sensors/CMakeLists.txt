@@ -171,6 +171,14 @@ target_link_libraries(anchorball_localization_node
   ${Eigen_LIBRARIES}
 )
 
+add_executable(${PROJECT_NAME}_multivehicle_node src/pose_fusing_multivehicle.cpp)
+target_link_libraries(${PROJECT_NAME}_multivehicle_node
+  ${catkin_LIBRARIES}
+  ${ISAM_LIBRARIES}
+  ${CHOLMOD_LIBRARIES}
+  ${Eigen_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############

@@ -47,7 +47,7 @@ Noise noise2_rot_3D = Information(1. * eye(6));
 std::vector<int> watchtower_id; //the AprilTags ID
 
 std::vector<Pose3d> robot_localization_node; //if we use watchtower to "localize" without isam and odometry.
-std::vector<Pose3d> watchtower_pose_node; //if we use watchtower to "localize" robots, the global pose of watchtowers are save here.
+std::vector<tf::Transform> watchtower_pose_node; //if we use watchtower to "localize" robots, the global pose of watchtowers are save here.
 std::vector<Pose2d> ground_truth_node;
 
 uint32_t shape = visualization_msgs::Marker::SPHERE;
@@ -73,8 +73,9 @@ void read_watchtower(/* arguments */) {
 
       if(result[0][0] == 'w'){
         int id;
-        id = (int)result[0][10]*10 + (int)result[0][11];
+        id = ((int)result[0][10] - 48)*10 + ((int)result[0][11] - 48);
         watchtower_id.push_back(id);
+        cout << "The id is: " << id << endl;
 
         const char *r1 = result[1].c_str();
         const char *r2 = result[2].c_str();
@@ -90,12 +91,18 @@ void read_watchtower(/* arguments */) {
         cout << atof(r4) << endl;
         cout << atof(r5) << endl;
         cout << atof(r6) << endl;
-        Pose3d new_pose(atof(r1), atof(r2), atof(r3),
-          atof(r4), atof(r5), atof(r6));
+
+        tf::Vector3 point(atof(r1), atof(r2), atof(r3));
+        tf::Quaternion orie(0, 0, 0, 1);
+        orie.setRPY(atof(r6), atof(r5), atof(r4));
+        //orie.setEulerZYX(atof(r4), atof(r5), atof(r6));
+        tf::Transform new_pose(orie, point);
+
         watchtower_pose_node.push_back(new_pose);
       }
     }
     thefile.close();
+    cout << "The number of watchtower: " << watchtower_pose_node.size() << endl;
   }
 }
 
@@ -103,6 +110,39 @@ void anchorball_localization_callback(const apriltags2_ros::AprilTagDetectionArr
 
   apriltags2_ros::AprilTagDetectionArray tag_detection_array = *msg;
   int size = tag_detection_array.detections.end()-tag_detection_array.detections.begin();
+
+  if (size > 0){
+    for(int it=0; it< tag_detection_array.detections.end()-tag_detection_array.detections.begin(); it++){
+      if(tag_detection_array.detections[it].id[0] != 424)
+        continue; //We only care the tag for the robot
+
+        apriltags2_ros::AprilTagDetection detection = tag_detection_array.detections[it];
+        //cout << "apriltag detected id: " << detection.id << endl;
+        int index = find (watchtower_id.begin(), watchtower_id.end(), wt_id) - watchtower_id.begin();
+
+        tf::Vector3 point(detection.pose.pose.pose.position.x, detection.pose.pose.pose.position.y, detection.pose.pose.pose.position.z);
+        tf::Quaternion orie(detection.pose.pose.pose.orientation.x, detection.pose.pose.pose.orientation.y, detection.pose.pose.pose.orientation.z, detection.pose.pose.pose.orientation.w);
+        tf::Transform tf_wt_bot(orie, point);
+
+        // Use the transformation from bot to the watchtower as a measurement
+        if (find (watchtower_id.begin(), watchtower_id.end(), wt_id) == watchtower_id.end())
+          cout << "The localization of the watchtower is unknown." << endl;
+        else{
+          tf::Transform pose_global_bot(tf_wt_bot);
+          pose_global_bot.mult(watchtower_pose_node[index], tf_wt_bot);
+
+          double pose_x = pose_global_bot.getOrigin().getX();
+          double pose_y = pose_global_bot.getOrigin().getY();
+          double pose_z = pose_global_bot.getOrigin().getZ();
+          double roll, pitch, yaw;
+          tf::Matrix3x3 m(pose_global_bot.getRotation());
+          m.getRPY(roll, pitch, yaw);
+
+          Pose3d new_bot_pose(pose_x, pose_y, pose_z, yaw, pitch, roll);
+          robot_localization_node.push_back(new_bot_pose);
+        }
+    }
+  }
 }
 
 void ground_truth_callback(const duckietown_msgs::GlobalPoseArray::ConstPtr& msg){
@@ -126,7 +166,7 @@ void process(){
   int it=0;
   //marker_ptr->action = 3; //DELETEALL
   //marker_pub_ptr->publish(*marker_ptr);
-  for (it=0; it< robot_localization_node.end()-robot_localization_node.begin(); it+=5){
+  for (it=0; it< robot_localization_node.size(); it+=5){
 
     marker_ptr->id = it;
     marker_ptr->action = visualization_msgs::Marker::ADD;
@@ -139,9 +179,9 @@ void process(){
     marker_ptr->pose.orientation.w = 1.0;
 
     // Set the scale of the marker -- 1x1x1 here means 1m on a side
-    marker_ptr->scale.x = 0.01;
-    marker_ptr->scale.y = 0.01;
-    marker_ptr->scale.z = 0.01;
+    marker_ptr->scale.x = 0.03;
+    marker_ptr->scale.y = 0.03;
+    marker_ptr->scale.z = 0.03;
 
     // Set the color -- be sure to set alpha to something non-zero!
     marker_ptr->color.r = 1.0f;
@@ -155,13 +195,13 @@ void process(){
     //cout << pose_nodes[it]->value().x() << endl;
   }
 
-  for (it=0; it< watchtower_pose_node.end()-watchtower_pose_node.begin(); it++){
+  for (it=0; it< watchtower_pose_node.size(); it++){
 
     watchtower_marker_ptr->id = it;
     watchtower_marker_ptr->action = visualization_msgs::Marker::ADD;
-    watchtower_marker_ptr->pose.position.x = watchtower_pose_node[it].x();
-    watchtower_marker_ptr->pose.position.y = watchtower_pose_node[it].y();
-    watchtower_marker_ptr->pose.position.z = watchtower_pose_node[it].z();
+    watchtower_marker_ptr->pose.position.x = watchtower_pose_node[it].getOrigin().getX();
+    watchtower_marker_ptr->pose.position.y = watchtower_pose_node[it].getOrigin().getY();
+    watchtower_marker_ptr->pose.position.z = watchtower_pose_node[it].getOrigin().getZ();
     watchtower_marker_ptr->pose.orientation.x = 0.0;
     watchtower_marker_ptr->pose.orientation.y = 0.0;
     watchtower_marker_ptr->pose.orientation.z = 0.0;
@@ -185,7 +225,7 @@ void process(){
     //cout << pose_nodes[it]->value().y() << endl;
   }
 
-  for (it=0; it< ground_truth_node.end()-ground_truth_node.begin(); it++){
+  for (it=0; it< ground_truth_node.size(); it++){
 
     ground_truth_marker_ptr->id = it;
     ground_truth_marker_ptr->action = visualization_msgs::Marker::ADD;
@@ -225,7 +265,7 @@ void spinOnce(){
 }
 
 void spin(){
-  ros::Rate rate(30);
+  ros::Rate rate(15);
   while (ros::ok())
   {
     spinOnce();
