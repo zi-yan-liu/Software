@@ -1,0 +1,102 @@
+origin:
+- id: 300
+  orientation:
+  - 0
+  - 0
+  - 0
+  - 1
+  translation:
+  - 0
+  - 0
+  - 0
+tiles:
+- - grass
+  - pond
+  - grass
+- - pond
+  - grass
+  - pond
+- - grass
+  - pond
+  - grass
+- - pond
+  - grass
+  - pond
+- - grass
+  - pond
+  - grass
+
+watchtowers:
+- watchtower03
+- watchtower13
+- watchtower07
+- watchtower14
+- watchtower16
+- watchtower17
+- watchtower19
+- watchtower20
+- watchtower25
+- watchtower32
+- watchtower35
+- watchtower42
+- watchtower43
+- watchtower47
+
+fixed_tags:
+
+- id: 301
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [0, 0]
+- id: 350
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [1, 0]
+- id: 374
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [2, 0]
+- id: 380
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [2, 1]
+- id: 320
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [0, 1]
+- id: 386
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [2, 2]
+- id: 326
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [0, 2]
+- id: 390
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [2, 3]
+- id: 342
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [0, 3]
+- id: 344
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [0, 4]
+- id: 392
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [2, 4]
+- id: 368
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [1, 4]
+- id: 354
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [1, 1]
+- id: 362
+  orientation: 0
+  translation: [ 31, 31]
+  tile: [1, 3]
