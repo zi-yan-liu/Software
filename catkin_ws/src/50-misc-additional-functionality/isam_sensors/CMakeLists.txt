@@ -179,6 +179,14 @@ target_link_libraries(${PROJECT_NAME}_multivehicle_node
   ${Eigen_LIBRARIES}
 )
 
+add_executable(husky_fusion src/husky_fusion.cpp)
+target_link_libraries(husky_fusion
+  ${catkin_LIBRARIES}
+  ${ISAM_LIBRARIES}
+  ${CHOLMOD_LIBRARIES}
+  ${Eigen_LIBRARIES}
+)
+
 #############
 ## Install ##
 #############
