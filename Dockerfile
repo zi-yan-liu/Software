@@ -1,5 +1,5 @@
 # Note: this container will have the name duckietown/rpi-duckiebot-base
-FROM duckietown/rpi-ros-kinetic-base:master18
+FROM duckietown/rpi-ros-kinetic-base:master19
 
 
 RUN [ "cross-build-start" ]
@@ -31,7 +31,9 @@ RUN bash -c "source /home/software/docker/env.sh && python -c 'import duckietown
 
 RUN [ "cross-build-end" ]
 
-#WORKDIR /home/software
+WORKDIR /home/software
+
+ENTRYPOINT ["/home/software/docker/entrypoint.sh"]
 
 CMD [ "/bin/bash" ]
 

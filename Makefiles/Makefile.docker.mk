@@ -30,6 +30,8 @@ docker-build:
 docker-upload:
 	docker push $(docker_image_name)
 
+docker-build-no-cache:
+	docker build --no-cache -t $(docker_image_name) .
 
 #docker-clean:
 #	# Kill all running containers:
