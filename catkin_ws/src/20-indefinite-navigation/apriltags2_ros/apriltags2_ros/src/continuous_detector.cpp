@@ -63,7 +63,7 @@ void ContinuousDetector::imageCallback (
     const sensor_msgs::ImageConstPtr& image_rect,
     const sensor_msgs::CameraInfoConstPtr& camera_info)
 {
-  if (!on_switch) return;
+  // if (!on_switch) return;
   // Convert ROS's sensor_msgs::Image to cv_bridge::CvImagePtr in order to run
   // AprilTags 2 on the iamge
   try
