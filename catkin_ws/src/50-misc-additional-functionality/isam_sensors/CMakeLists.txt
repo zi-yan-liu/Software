@@ -15,6 +15,7 @@ find_package(catkin REQUIRED COMPONENTS
   rospy
   std_msgs
   sensor_msgs
+  nav_msgs
 )
 
 ## System dependencies are found with CMake's conventions
@@ -181,6 +182,14 @@ target_link_libraries(${PROJECT_NAME}_multivehicle_node
 
 add_executable(husky_fusion src/husky_fusion.cpp)
 target_link_libraries(husky_fusion
+  ${catkin_LIBRARIES}
+  ${ISAM_LIBRARIES}
+  ${CHOLMOD_LIBRARIES}
+  ${Eigen_LIBRARIES}
+)
+
+add_executable(multi_session src/multi_session.cpp)
+target_link_libraries(multi_session
   ${catkin_LIBRARIES}
   ${ISAM_LIBRARIES}
   ${CHOLMOD_LIBRARIES}
