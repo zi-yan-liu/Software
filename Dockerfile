@@ -1,8 +1,5 @@
 # Note: this container will have the name duckietown/rpi-duckiebot-base
-FROM duckietown/rpi-ros-kinetic-base:master19
-
-
-RUN [ "cross-build-start" ]
+FROM duckietown/rpi-ros-kinetic-base:master19-no-arm
 
 COPY requirements.txt /requirements.txt
 
@@ -22,14 +19,12 @@ RUN echo "source /home/software/docker/env.sh" >> ~/.bashrc
 
 # We make sure that all dependencies are installed
 # by trying to import the duckietown_utils package
-RUN bash -c "source /home/software/docker/env.sh && python -c 'import duckietown_utils'"
+RUN bash -c "source /home/software/docker/env.sh"
+#&& python -c 'import duckietown_utils'"
 
 # Most of these will fail, but might be useful to debug some issues.
 # Leave it here to run it manually.
 # RUN bash -c "source /home/software/docker/env.sh && /home/software/what-the-duck"
-
-
-RUN [ "cross-build-end" ]
 
 WORKDIR /home/software
 
@@ -39,4 +34,3 @@ CMD [ "/bin/bash" ]
 
 ENV DISABLE_CONTRACTS=1
 
-LABEL maintainer="Breandan Considine breandan.considine@umontreal.ca"
