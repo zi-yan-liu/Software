@@ -33,5 +33,3 @@ fi
 export PATH=$PATH:$DUCKIETOWN_ROOT/shortcuts
 
 export DISABLE_CONTRACTS=1
-
-exec "$@" #Passes arguments. Need this for ROS remote launching to work.

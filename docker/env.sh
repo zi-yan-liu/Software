@@ -20,6 +20,6 @@ echo "Setting DUCKIEFLEET_ROOT to /data/config"
 export DUCKIEFLEET_ROOT=/data/config
 echo "Setting VEHICLE_NAME to $HOSTNAME"
 export VEHICLE_NAME=$HOSTNAME
-cat misc/duckie.art
 
-/home/software/docker/init_config_defaults.sh
+
+source /home/software/docker/init_config_defaults.sh

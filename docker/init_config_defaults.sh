@@ -1,7 +1,7 @@
 #!/bin/bash
 set -eu
-DATADIR=/data/config
-DUCKIESRC=/home/software
+DATADIR=$DUCKIEFLEET_ROOT
+DUCKIESRC=$DUCKIETOWN_ROOT
 
 if [[ ! -d ${DATADIR}/calibrations ]]; then
     mkdir -p ${DATADIR}/calibrations/kinematics
