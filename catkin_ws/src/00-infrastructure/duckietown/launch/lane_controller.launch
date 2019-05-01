@@ -7,7 +7,6 @@
     <arg name="live" default="true" doc="if set to true, run the camera and do live detection. "/>
 
 
-    <include file="$(find duckietown)/machines"/>    
 
     <group if="$(arg use_vicon)">
         <remap from="vicon_for_lane_node/vicon_pose" to="pose"/>
