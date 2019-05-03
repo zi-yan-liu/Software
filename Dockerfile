@@ -1,5 +1,5 @@
 # Note: this container will have the name duckietown/rpi-duckiebot-base
-FROM duckietown/rpi-ros-kinetic-base:master19
+FROM duckietown/rpi-ros-kinetic-base:master18
 
 
 RUN [ "cross-build-start" ]
@@ -13,6 +13,7 @@ RUN pip install -r /requirements.txt
 
 RUN mkdir /home/software
 COPY . /home/software/
+COPY docker/machines.xml /home/software/catkin_ws/src/00-infrastructure/duckietown/machines
 
 ENV ROS_LANG_DISABLE=gennodejs:geneus:genlisp
 RUN /bin/bash -c "cd /home/software/ && source /opt/ros/kinetic/setup.bash && catkin_make -j -C catkin_ws/"
@@ -32,8 +33,6 @@ RUN bash -c "source /home/software/docker/env.sh && python -c 'import duckietown
 RUN [ "cross-build-end" ]
 
 WORKDIR /home/software
-
-ENTRYPOINT ["/home/software/docker/entrypoint.sh"]
 
 CMD [ "/bin/bash" ]
 
