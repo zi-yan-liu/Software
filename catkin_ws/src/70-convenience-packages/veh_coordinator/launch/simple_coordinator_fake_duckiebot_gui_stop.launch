@@ -6,12 +6,9 @@
 
     <arg name="test" default="false"/>
 
-    <include file="$(find duckietown)/machines"/>
-
     <!-- Vehicle Coordinator -->
     <include file="$(find veh_coordinator)/launch/simple_coordinator_node.launch">
       <arg name="veh" value="$(arg veh)"/>
-      <arg name="local" value="$(arg local)"/>
       <arg name="config" value="$(arg config)"/>
       <arg name="param_file_name" value="$(arg param_file_name)"/>
       <arg name="intersectionType" value="stopSign"/>
@@ -25,7 +22,6 @@
     <!-- Fake inputs for Vehicle Coordinator -->
     <include file="$(find veh_coordinator)/launch/fake_duckiebot_node.launch">
       <arg name="veh" value="$(arg veh)"/>
-      <arg name="local" value="$(arg local)"/>
       <arg name="config" value="$(arg config)"/>
       <arg name="param_file_name" value="$(arg param_file_name)"/>
     </include>
