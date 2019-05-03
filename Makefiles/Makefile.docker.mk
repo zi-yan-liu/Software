@@ -25,11 +25,13 @@ branch=$(shell git rev-parse --abbrev-ref HEAD)
 docker_image_name=duckietown/rpi-duckiebot-base:$(branch)
 
 docker-build:
-	docker build -t $(docker_image_name) .
+	docker build --pull -t $(docker_image_name) .
 
 docker-upload:
 	docker push $(docker_image_name)
 
+docker-build-no-cache:
+	docker build --no-cache -t $(docker_image_name) .
 
 #docker-clean:
 #	# Kill all running containers:
