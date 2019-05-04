@@ -126,10 +126,13 @@ def get_camera_info_config_file(robot_name):
     for df in roots:
     # Load camera information
         fn = os.path.join(df, 'camera_intrinsic', robot_name + '.yaml')
+        fn_default = os.path.join(df, 'camera_intrinsic', 'default.yaml')
         if os.path.exists(fn):
             return fn
+        elif os.path.exists(fn_default):
+            return fn_default
         else:
-            print('%s does not exist' % fn)
+            print('%s does not exist and neither does %s' % (fn, fn_default))
 
     msg = 'Cannot find intrinsic file for robot %r;\n%s' % (robot_name, roots)
     raise NoCameraInfoAvailable(msg)
