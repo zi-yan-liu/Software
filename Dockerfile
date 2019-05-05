@@ -16,6 +16,7 @@ RUN /bin/bash -c "cd /home/software/ && source /opt/ros/kinetic/setup.bash && ca
 
 RUN echo "source /home/software/docker/env.sh" >> ~/.bashrc
 
+RUN apt-get update && apt-get install -y x11-xserver-utils python-pygame 
 
 # We make sure that all dependencies are installed
 # by trying to import the duckietown_utils package

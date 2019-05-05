@@ -155,7 +155,6 @@ def print_hint():
     print("         [s]:    Stop lane-following")
     print("         [i]:    Toggle anti-instagram")
     print("\n")
-    print("Questions? Contact Julien Kindle: jkindle@ethz.ch")
 
 
 
