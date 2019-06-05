@@ -1,52 +1,23 @@
+
+
 <launch>
-	<arg name="veh" doc="Name of vehicle. ex: megaman"/>
-	<arg name="local" default="false" doc="true for running everything you possibly can on laptop. false for everything running on vehicle."/>
-	<arg name="config" default="baseline" doc="Specify a config."/>
-	<arg name="param_file_name" default="default" doc="Specify a param file. ex:megaman." />
-	<arg name="live" default="true" doc="if set to true, run the camera and do live detection. "/>
-	<arg name="only" default="false" doc="Only run the ground_projection part when set to true."/>
+	<arg name="veh" default="$(env VEHICLE_NAME)"/>
+	<arg name="ai_trafo_mode" default="cb" doc="'cb' for colo balance only; 'both' for color balance and linear trafo"/>
+	<arg name="ai_interval" default="5" doc="interval with which the linear trafo gets updated. color balance is performed every second."/>
+	<arg name="verbose" default="false"/>
 
-	<!-- Ground projection -->
-	<include unless="$(arg only)" file="$(find duckietown)/launch/ground_projection.launch">
-	    <arg name="veh" value="$(arg veh)"/>
-	    <arg name="local" value="$(arg local)"/>
-	    <arg name="config" value="$(arg config)"/>
-	    <arg name="param_file_name" value="$(arg param_file_name)"/>
-	    <arg name="live" value="$(arg live)"/>
+	<!-- start basic args -->
+	<include file="$(find duckietown_demos)/launch/master.launch">
+		<arg name="veh" value="$(arg veh)"/>
+		<arg name="visualization" default="true" />
+		<!--arg name="verbose" value="$(arg verbose)" /-->
+		<arg name="param_file_name" default="default" />
+		<arg name="line_detector_param_file_name" default="default" />
+		<arg name="anti_instagram" default="true" />
+		<arg name="ai_trafo_mode" value="$(arg ai_trafo_mode)"/>
+		<arg name="ai_interval" value="$(arg ai_interval)"/>
+		<arg name="/lane_following/stop_line_filter" default="true" /> <!-- will not every allow a transition into COORDINATION mode -->
+		<arg name="vehicle_avoidance" default="false"/>
+		<arg name="LED" default="false" />
 	</include>
-
-	<!-- Lane Filter -->
-	<remap from="lane_filter_node/segment_list" to="ground_projection/lineseglist_out"/>
-	<include file="$(find lane_filter)/launch/lane_filter_node.launch">
-	    <arg name="veh" value="$(arg veh)"/>
-	    <arg name="local" value="$(arg local)"/>
-	    <arg name="config" value="$(arg config)"/>
-	    <arg name="param_file_name" value="$(arg param_file_name)"/>
-	</include>
-
-	<!-- Stop Line Filter -->
-	<remap from="stop_line_filter_node/lanewidth" to="lane_filter_node/lanewidth"/>
-	<remap from="stop_line_filter_node/lane_pose" to="lane_filter_node/lane_pose"/>
-	<remap from="stop_line_filter_node/segment_list" to="ground_projection/lineseglist_out"/>
-	<include file="$(find stop_line_filter)/launch/stop_line_filter_node.launch">
-	    <arg name="veh" value="$(arg veh)"/>
-	    <arg name="local" value="$(arg local)"/>
-	    <arg name="config" value="$(arg config)"/>
-	    <arg name="param_file_name" value="$(arg param_file_name)"/>
-	</include>
-
-
-	<!-- Visualize -->
-	<include file="$(find lane_filter)/launch/lane_pose_visualizer_node.launch">
-	    <arg name="veh" value="$(arg veh)"/>		
-	</include>
-	
-	<!-- Joystick -->
-    	<include file="$(find duckietown)/launch/joystick.launch">
-        	 <arg name="veh" value="$(arg veh)"/>
-        	 <arg name="local" value="$(arg local)"/>
-        	 <arg name="config" value="$(arg config)"/>
-            <arg name="param_file_name" value="$(arg param_file_name)"/>
-    	</include>
-
-</launch>	
+</launch>
