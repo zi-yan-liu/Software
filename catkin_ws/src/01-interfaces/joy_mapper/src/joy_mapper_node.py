@@ -145,7 +145,8 @@ class JoyMapper(object):
         elif (joy_msg.buttons[8] == 1):
             e_stop_msg = BoolStamped()
             e_stop_msg.header.stamp = self.joy.header.stamp
-            e_stop_msg.data = !self.prev_emergency_msg
+            self.prev_emergency_msg=!self.prev_emergency_msg
+            e_stop_msg.data = self.prev_emergency_msg
             rospy.loginfo('E-stop message')
             self.pub_e_stop.publish(e_stop_msg)
 
