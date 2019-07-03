@@ -14,6 +14,7 @@ class JoyMapperNode2(EasyNode):
         self.info("Initializing")
         self.last_pub_msg = None
         self.last_pub_time = rospy.Time.now()
+        self.prev_emergency_msg = False
         
     def on_parameters_changed(self, first_time, _updated):
         if first_time:
@@ -103,8 +104,8 @@ class JoyMapperNode2(EasyNode):
 
         elif (joy_msg.buttons[BT_LOGITEK] == 1): 
             self.info('E-stop message')
-            data = True # note that this is toggle (actual value doesn't matter)
-            self._send_bool_stamped(self.publishers.e_stop, data, joy_msg)
+            self.prev_emergency_msg = not self.prev_emergency_msg
+            self._send_bool_stamped(self.publishers.e_stop, self.prev_emergency_msg, joy_msg)
 
         elif (joy_msg.buttons[BT_LEFT_JOY] == 1):
             self.info('start lane following with avoidance mode')

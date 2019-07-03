@@ -42,6 +42,7 @@ class JoyMapper(object):
         self.state_parallel_autonomy = False
         self.deep_learning = False
         self.state_verbose = False
+        self.prev_emergency_msg = False
 
         pub_msg = BoolStamped()
         pub_msg.data = self.state_parallel_autonomy
@@ -144,7 +145,8 @@ class JoyMapper(object):
         elif (joy_msg.buttons[8] == 1):
             e_stop_msg = BoolStamped()
             e_stop_msg.header.stamp = self.joy.header.stamp
-            e_stop_msg.data = True # note that this is toggle (actual value doesn't matter)
+            self.prev_emergency_msg= not self.prev_emergency_msg
+            e_stop_msg.data = self.prev_emergency_msg
             rospy.loginfo('E-stop message')
             self.pub_e_stop.publish(e_stop_msg)
 
