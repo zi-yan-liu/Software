@@ -10,14 +10,12 @@ import time
 
 from duckietown_utils.disk_hierarchy import tmpfile
 from duckietown_utils.mkdirs import d8n_make_sure_dir_exists
-from duckietown_utils.system_cmd_imp import system_cmd_result
 import numpy as np
 
 from .contracts_ import contract
 from .deprecation import deprecated
 from .file_utils import write_data_to_file
 from .logging_logger import logger
-from .timeit import timeit_clock
 
 
 @contract(bgr='array[HxWx3](uint8)')

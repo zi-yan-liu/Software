@@ -140,6 +140,6 @@ class Constant(Evaluable):
     def eval(self, _test_results):
         return self.x
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return 'Constant(%s)' % self.x.__repr__()
 

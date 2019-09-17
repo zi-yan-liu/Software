@@ -25,7 +25,7 @@ class Edge(object):
         return self.source == other.source and self.target == other.target \
             and self.weight == other.weight and self.action == other.action
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Edge(%r,%r,%r,%r)" % (self.source, self.target, self.weight, self.action)
 
 

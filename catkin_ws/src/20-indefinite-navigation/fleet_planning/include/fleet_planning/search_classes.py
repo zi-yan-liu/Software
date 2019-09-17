@@ -5,7 +5,7 @@ class SearchNode(object):
         self._action = action
         self._cost = cost
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "<SearchNode (id: %s)| state: %s, cost: %s, parent_id: %s>" % (id(self), self.state,
                                                                               self.cost,id(self.parent))
 
@@ -32,7 +32,7 @@ class SearchNode(object):
     def action(self):
         """Get the action that was taken to get from parent to the state represented by this node."""
         return self._action
-    
+
     def __eq__(self, other):
         return isinstance(other, SearchNode) and self._state == other._state
 
@@ -55,7 +55,7 @@ class Path(object):
         self.actions.reverse()
         self.cost = search_node.cost
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "Number of nodes: %d\nTotal cost: %.3f\nNodes: %s\nActions: %s" % (len(self.path),self.cost, self.path, self.actions)
 
     def edges(self):

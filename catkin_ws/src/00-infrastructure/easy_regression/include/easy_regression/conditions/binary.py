@@ -102,7 +102,7 @@ class Cmp():
             msg = 'While evaluating %s(%s, %s)' % (self.f.__name__, a, b)
             dtu.raise_wrapped(EvaluationError, e, msg, compact=True)
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return self.which
 
 

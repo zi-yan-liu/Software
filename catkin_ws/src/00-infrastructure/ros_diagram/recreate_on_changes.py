@@ -4,7 +4,7 @@ import logging
 import time
 import os
 import sys
-from prepare import apply_rules
+from rdg.prepare import apply_rules
 
 try:
     import watchdog
