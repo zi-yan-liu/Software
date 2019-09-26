@@ -1,6 +1,9 @@
 megacity: check-environment
 	bash -c "source environment.sh; source set_ros_master.sh; source set_vehicle_name.sh; roslaunch duckietown_demos megacity.launch"
 
+megacity-tw: check-environment
+	bash -c "source environment.sh; source set_ros_master.sh; source set_vehicle_name.sh; roslaunch duckietown_demos megacity_tw.launch"
+
 megacity-%: check-environment
 	bash -c "source environment.sh; source set_ros_master.sh; source set_vehicle_name.sh; roslaunch duckietown_demos megacity.launch city:=$*"
 
