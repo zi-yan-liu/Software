@@ -1,0 +1,5 @@
+<launch>
+	<node pkg="wheel_odom" type="read_encoder.py" name="wheel_encoder" output="screen" clear_params="true" required="true"/>
+		<rosparam command="load" file="$(find wheel_odom)/config/wheel_odom.yaml"/>
+
+</launch>
