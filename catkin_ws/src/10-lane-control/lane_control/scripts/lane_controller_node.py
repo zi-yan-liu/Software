@@ -305,12 +305,9 @@ class lane_controller(object):
                     a = self.v_bar/(2*(d1-d2))
                     b = self.v_bar - a*d1
                     v_new = a*self.stop_line_distance + b
-                    print "Distance to stop:",self.stop_line_distance
+                    #print "Distance to stop:",self.stop_line_distance
                     v_new = np.max([self.v_bar/2.0, np.min([self.v_bar, v_new])])
-                    if self.stop_line_distance <= 0.145:
-                        print "Stop line <= 0.145!!!"
-                        self.v_ref_possible["main_pose"] = 0
-                    #self.v_ref_possible["main_pose"] = v_new
+                    self.v_ref_possible["main_pose"] = v_new
                 self.main_pose_source = pose_source
                 self.pose_initialized = True
 
