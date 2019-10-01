@@ -119,8 +119,8 @@ class UnicornIntersectionNode(object):
         if self.debug_dir != -1: self.turn_type = self.debug_dir
 
     def setupParams(self):
-        self.time_left_turn = self.setupParam("~time_left_turn", 2)
-        self.time_straight_turn = self.setupParam("~time_straight_turn", 2)
+        self.time_left_turn = self.setupParam("~time_left_turn", 3)
+        self.time_straight_turn = self.setupParam("~time_straight_turn", 4)
         self.time_right_turn = self.setupParam("~time_right_turn", 2)
         self.ff_left = self.setupParam("~ff_left", 1.5)
         self.ff_straight = self.setupParam("~ff_straight", 0)
