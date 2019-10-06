@@ -104,7 +104,7 @@ class AprilLocalLocalization(object):
 
             # rospy.loginfo("[%s] detection", self.node_name)
             # ------ start tag info processing
-            if detection.pose.pose.pose.position.x <= -0.37 or detection.pose.pose.pose.position.x >= 0.37:
+            if detection.pose.pose.pose.position.x <= -0.40 or detection.pose.pose.pose.position.x >= 0.40:
                 continue
 
             new_info = TagInfo()
