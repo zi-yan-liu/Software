@@ -38,7 +38,6 @@ sudo apt remove -y \
 # These don't have an APT package
 
 pip install --user --upgrade -r requirements.txt
-pip install --user jpeg4py
 
 # None of this should be needed. Next time you think you need it, let me know and we figure it out. -AC
 # sudo pip install --upgrade pip setuptools wheel
