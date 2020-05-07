@@ -6,3 +6,5 @@ set -x
 # rather than doing "pip install X".
 
 ./dependencies_common.sh
+
+pip install --user --upgrade picamera==1.13
