@@ -12,6 +12,8 @@ set -x
 sudo apt install -y \
 	python-frozendict \
 	libfreetype6-dev \
+	libffi-dev \
+	libssl-dev \
 	libxslt-dev \
 	libxml2-dev \
 	python-lxml \
