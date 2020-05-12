@@ -37,16 +37,23 @@ sudo apt remove -y \
 
 pip install --upgrade --user \
 	PyContracts==1.7.15 \
-    DecentLogs==1.1.2\
+	DecentLogs==1.1.2 \
 	QuickApp==1.3.8 \
 	conftools==1.9.1 \
 	comptests==1.4.10 \
 	procgraph==1.10.6 \
 	pymongo==3.5.1 \
-	ruamel.yaml==0.15.34
-
-
-
+	ruamel.yaml==0.15.34 \
+	networkx==2.2 \
+	compmake==3.5.12 \
+	numpy==1.16.6 \
+	Pillow==4.3.0 \
+	matplotlib==2.2.2 \
+	kiwisolver==1.1.0 \
+	setuptools==44.1.0 \
+	reprep==2.10.3 \
+	SystemCmd==2.0.0 \
+	PyYAML==3.12
 
 # None of this should be needed. Next time you think you need it, let me know and we figure it out. -AC
 # sudo pip install --upgrade pip setuptools wheel
