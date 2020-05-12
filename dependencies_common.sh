@@ -35,7 +35,7 @@ sudo apt remove -y \
 
 # These don't have an APT package
 
-pip install --upgrade --user \
+pip2 install --upgrade --user \
 	PyContracts==1.7.15 \
 	DecentLogs==1.1.2 \
 	QuickApp==1.3.8 \
